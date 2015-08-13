@@ -1,4 +1,5 @@
 *.pyc
+*.tox
 *.swp
 *.swo
 /.vagrant
