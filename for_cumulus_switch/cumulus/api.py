@@ -8,6 +8,12 @@ DEFAULT_API_BIND = '0.0.0.0'
 DEFAULT_API_PORT = 8140
 DEFAULT_ROOT_HELPER = 'sudo'
 
+def 400_fail(errmsg):
+  pass
+
+def 200_ok():
+  pass
+
 @app.route('/networks/<network_id>', methods=['PUT'])
 def create_bridge(network_id):
     """Generic call for creating a linux bridge

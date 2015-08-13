@@ -1,5 +1,6 @@
 *.pyc
-
+*.swp
+*.swo
 /.vagrant
 /*.egg-info
 /build
