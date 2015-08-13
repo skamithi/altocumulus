@@ -45,3 +45,30 @@ class TestApi(object):
         mock_using_ansible.return_value = None
         response = self.app.delete('/networks/%s' % (network_id))
         assert_equals(response.status_code, 200)
+
+    @mock.patch('cumulus_ml2.ansible.create_bridge')
+    @mock.patch('cumulus_ml2.ansible.add_to_bridge')
+    @mock.patch('cumulus_ml2.api.send_400_fail')
+    @mock.patch('cumulus_ml2.api.send_200_ok')
+    def test_add_to_port(self, mock_200_ok, mock_400_fail,
+                         mock_using_ansible, mock_create_bridge):
+        network_id = '1111222333323434'
+        port_id = 'swp1'
+        mock_400_fail.return_value = Response(status=400)
+        mock_200_ok.return_value = Response(status=200)
+        # if ansible is unable to create the bridge, then error out
+        mock_create_bridge.return_value = 'error_msg'
+        response = self.app.put('/networks/%s/%s' % (network_id, port_id))
+        assert_equals(response.status_code, 400)
+        # if bridge exists
+        # but port cannot be added
+        mock_create_bridge.return_value = None
+        mock_using_ansible.return_value = 'error_msg'
+        response = self.app.put('/networks/%s/%s' % (network_id, port_id))
+        assert_equals(response.status_code, 400)
+        mock_using_ansible.assert_called_with('brq11112223333', 'swp1')
+        # if bridge exists and port is successfully created
+        mock_create_bridge.return_value = None
+        mock_using_ansible.return_value = None
+        response = self.app.put('/networks/%s/%s' % (network_id, port_id))
+        assert_equals(response.status_code, 200)

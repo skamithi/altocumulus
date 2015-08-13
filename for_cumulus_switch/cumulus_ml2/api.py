@@ -77,7 +77,7 @@ def delete_bridge(network_id):
         return send_200_ok()
 
 
-@app.route('/networks/<network_id>/<port_id>', methods=['DELETE'])
+@app.route('/networks/<network_id>/<port_id>', methods=['PUT'])
 def add_port_to_bridge(network_id, port_id):
     """Generic call for adding a port to a linux bridge
     Args:
@@ -87,11 +87,12 @@ def add_port_to_bridge(network_id, port_id):
         200 Status OK back to the client, if everything is okay.
         400 Failed to the client if something is wrong.
     """
-    errmsg = cumulus_ml2_netshow.check_bridge(network_id)
+    # create a bridge if is not there..If it exists, just return none
+    errmsg = cumulus_ml2_ansible.create_bridge(network_id)
     if errmsg:
         return send_400_fail(errmsg)
     else:
-        errmsg = cumulus_ml2_ansible.create_bridge(
+        errmsg = cumulus_ml2_ansible.add_to_bridge(
             bridge_name(network_id), port_id)
         if errmsg:
             return send_400_fail(errmsg)
@@ -99,7 +100,7 @@ def add_port_to_bridge(network_id, port_id):
             return send_200_ok()
 
 
-@app.route('/networks/<network_id>/<port_id>', methods=['PUT'])
+@app.route('/networks/<network_id>/<port_id>', methods=['DELETE'])
 def delete_port_to_bridge(network_id, port_id):
     """Generic call for deleting a port to a linux bridge
     Args:
