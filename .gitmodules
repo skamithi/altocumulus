@@ -1,0 +1,3 @@
+[submodule "for_cumulus_switch/cumulus_ansible_modules"]
+	path = for_cumulus_switch/cumulus_ansible_modules
+	url = http://github.com/CumulusNetworks/cumulus-linux-ansible-modules
