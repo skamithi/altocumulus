@@ -8,7 +8,7 @@ class TestApi(object):
     def setup(self):
         self.app = app.test_client()
 
-    @mock.patch('cumulus_ml2.ansible.delete_bridge')
+    @mock.patch('cumulus_ml2.ansible_cumulus.delete_bridge')
     @mock.patch('cumulus_ml2.api.send_400_fail')
     @mock.patch('cumulus_ml2.api.send_200_ok')
     def test_delete_bridge(self,
@@ -27,8 +27,8 @@ class TestApi(object):
         response = self.app.delete('/networks/%s' % (network_id))
         assert_equals(response.status_code, 200)
 
-    @mock.patch('cumulus_ml2.ansible.netshowlib.iface')
-    @mock.patch('cumulus_ml2.ansible.update_bridge')
+    @mock.patch('cumulus_ml2.ansible_cumulus.netshowlib.iface')
+    @mock.patch('cumulus_ml2.ansible_cumulus.update_bridge')
     @mock.patch('cumulus_ml2.api.send_400_fail')
     @mock.patch('cumulus_ml2.api.send_200_ok')
     def test_add_to_bridge_first_member(self, mock_200_ok, mock_400_fail,
@@ -49,8 +49,8 @@ class TestApi(object):
         response = self.app.put('/networks/%s/%s' % (network_id, port_id))
         assert_equals(response.status_code, 400)
 
-    @mock.patch('cumulus_ml2.ansible.netshowlib.iface')
-    @mock.patch('cumulus_ml2.ansible.update_bridge')
+    @mock.patch('cumulus_ml2.ansible_cumulus.netshowlib.iface')
+    @mock.patch('cumulus_ml2.ansible_cumulus.update_bridge')
     @mock.patch('cumulus_ml2.api.send_400_fail')
     @mock.patch('cumulus_ml2.api.send_200_ok')
     def test_add_to_bridge_other_members_exist(self, mock_200_ok, mock_400_fail,
@@ -69,7 +69,8 @@ class TestApi(object):
         mock_update_bridge.return_value = None
         response = self.app.put('/networks/%s/%s' % (network_id, port_id))
         mock_update_bridge.assert_called_with('brq11112223333',
-                                              sorted(['eth2.1', 'eth4.3', 'eth1', 'swp1']))
+                                              sorted(['eth2.1', 'eth4.3',
+                                                      'eth1', 'swp1']))
         assert_equals(response.status_code, 200)
 
         # if port already exists in member list
@@ -79,8 +80,8 @@ class TestApi(object):
                                               sorted(['eth2.1', 'eth4.3', 'eth1']))
         assert_equals(response.status_code, 200)
 
-    @mock.patch('cumulus_ml2.ansible.update_bridge')
-    @mock.patch('cumulus_ml2.ansible.netshowlib.iface')
+    @mock.patch('cumulus_ml2.ansible_cumulus.update_bridge')
+    @mock.patch('cumulus_ml2.ansible_cumulus.netshowlib.iface')
     @mock.patch('cumulus_ml2.api.send_400_fail')
     @mock.patch('cumulus_ml2.api.send_200_ok')
     def test_delete_from_bridge(self, mock_200_ok, mock_400_fail,
