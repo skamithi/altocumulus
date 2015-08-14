@@ -8,8 +8,6 @@ class TestApi(object):
     def setup(self):
         self.app = app.test_client()
 
-    def test_update_bridge(self):
-
     @mock.patch('cumulus_ml2.ansible.delete_bridge')
     @mock.patch('cumulus_ml2.api.send_400_fail')
     @mock.patch('cumulus_ml2.api.send_200_ok')

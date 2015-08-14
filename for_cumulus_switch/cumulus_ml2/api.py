@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from flask import Flask
-import cumulus_ml2.ansible as cumulus_ml2_ansible
+import cumulus_ml2.ansible_cumulus as cumulus_ml2_ansible
 
 DEFAULT_API_BIND = '0.0.0.0'
 DEFAULT_API_PORT = 8140

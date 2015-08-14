@@ -3,6 +3,7 @@ import ansible
 import pkg_resources
 import os
 
+
 def update_bridge(bridgename, bridgemems):
     """ creates or updates a cumulus linux bridge using
     the cumulus ansible modules
@@ -13,6 +14,7 @@ def update_bridge(bridgename, bridgemems):
         None if successful
         String error message if something bad occurs
     """
+    from nose.tools import set_trace; set_trace()
     install_location = pkg_resources.require('cumulus-ml2-service')[0].location
     ansible.constants.DEFAULT_MODULE_PATH = os.path.join(install_location,
                                                          '..',
@@ -20,10 +22,10 @@ def update_bridge(bridgename, bridgemems):
                                                          '..',
                                                          'ansible_modules',
                                                          'library')
-    ansible.constants.HOST_KEY_CHECKING = False
+    ansible.ansible.constants.HOST_KEY_CHECKING = False
     inv = ansible.inventory.Inventory(['localhost'])
     modargs_str = "name=%s ports='%s'" % (bridgename, bridgemems)
-    ansible.runner.Runner(
+    ansible.ansible.runner.Runner(
         module_name='cl_bridge',
         module_args=modargs_str, inventory=inv).run()
 
