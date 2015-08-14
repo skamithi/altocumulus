@@ -44,7 +44,7 @@ def add_to_bridge(bridgename, port_id):
         bridgemems = list(bridgeiface.members.keys())
         if port_id not in bridgemems:
             bridgemems.append(port_id)
-    return update_bridge(bridgename, bridgemems)
+    return update_bridge(bridgename, sorted(bridgemems))
 
 
 def delete_from_bridge(bridgename, port_id):
@@ -64,4 +64,4 @@ def delete_from_bridge(bridgename, port_id):
         newbridgemems = bridgemems.remove(port_id)
     except ValueError:
         return "port %s not a part of the bridge" % (port_id)
-    return update_bridge(bridgename, newbridgemems)
+    return update_bridge(bridgename, sorted(newbridgemems))
