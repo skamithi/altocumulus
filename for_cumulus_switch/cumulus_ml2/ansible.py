@@ -36,11 +36,15 @@ def add_to_bridge(bridgename, port_id):
     """
     # get bridgemem list and add port id to the list
     bridgeiface = netshowlib.iface(bridgename)
-    bridgemems = []
+    # if bridge doesn't exist create it with port_id as
+    # first member otherwise append to list of existing
+    # members and update bridge info
+    bridgemems = [port_id]
     if bridgeiface.exists():
-        bridgemems = bridgeiface.members
-    if port_id in bridgemems:
-        return update_bridge(bridgename, bridgemems)
+        bridgemems = list(bridgeiface.members.keys())
+        if port_id not in bridgemems:
+            bridgemems.append(port_id)
+    return update_bridge(bridgename, bridgemems)
 
 
 def delete_from_bridge(bridgename, port_id):

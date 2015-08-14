@@ -27,27 +27,56 @@ class TestApi(object):
         response = self.app.delete('/networks/%s' % (network_id))
         assert_equals(response.status_code, 200)
 
-    @mock.patch('cumulus_ml2.ansible.add_to_bridge')
+    @mock.patch('cumulus_ml2.ansible.netshowlib.iface')
+    @mock.patch('cumulus_ml2.ansible.update_bridge')
     @mock.patch('cumulus_ml2.api.send_400_fail')
     @mock.patch('cumulus_ml2.api.send_200_ok')
-    def test_add_to_bridge(self, mock_200_ok, mock_400_fail,
-                           mock_using_ansible):
+    def test_add_to_bridge_first_member(self, mock_200_ok, mock_400_fail,
+                                        mock_update_bridge, mock_iface):
         network_id = '1111222333323434'
         port_id = 'swp1'
         mock_400_fail.return_value = Response(status=400)
         mock_200_ok.return_value = Response(status=200)
-        # if ansible is unable to create the bridge, then error out
+        mymock = mock.MagicMock()
+        mymock.exists = mock.MagicMock(return_value=False)
+        mock_iface.return_value = mymock
+        mock_update_bridge.return_value = None
+        response = self.app.put('/networks/%s/%s' % (network_id, port_id))
+        mock_update_bridge.assert_called_with('brq11112223333', ['swp1'])
+        assert_equals(response.status_code, 200)
+        # if update_bridge returns an error
+        mock_update_bridge.return_value = 'error msg'
         response = self.app.put('/networks/%s/%s' % (network_id, port_id))
         assert_equals(response.status_code, 400)
-        # if bridge exists
-        # but port cannot be added
-        mock_using_ansible.return_value = 'error_msg'
+
+    @mock.patch('cumulus_ml2.ansible.netshowlib.iface')
+    @mock.patch('cumulus_ml2.ansible.update_bridge')
+    @mock.patch('cumulus_ml2.api.send_400_fail')
+    @mock.patch('cumulus_ml2.api.send_200_ok')
+    def test_add_to_bridge_other_members_exist(self, mock_200_ok, mock_400_fail,
+                                               mock_update_bridge, mock_iface):
+        network_id = '1111222333323434'
+        port_id = 'swp1'
+        mock_400_fail.return_value = Response(status=400)
+        mock_200_ok.return_value = Response(status=200)
+        mymock = mock.MagicMock()
+        mymock.exists = mock.MagicMock(return_value=True)
+        mymock.members = {'eth1': '',
+                          'eth2.1': '',
+                          'eth4.3': ''
+                          }
+        mock_iface.return_value = mymock
+        mock_update_bridge.return_value = None
         response = self.app.put('/networks/%s/%s' % (network_id, port_id))
-        assert_equals(response.status_code, 400)
-        mock_using_ansible.assert_called_with('brq11112223333', 'swp1')
-        # if bridge exists and port is successfully created
-        mock_using_ansible.return_value = None
+        mock_update_bridge.assert_called_with('brq11112223333',
+                                              sorted(['eth2.1', 'eth4.3', 'eth1', 'swp1']))
+        assert_equals(response.status_code, 200)
+
+        # if port already exists in member list
+        port_id = 'eth2.1'
         response = self.app.put('/networks/%s/%s' % (network_id, port_id))
+        mock_update_bridge.assert_called_with('brq11112223333',
+                                              sorted(['eth2.1', 'eth4.3', 'eth1']))
         assert_equals(response.status_code, 200)
 
     @mock.patch('cumulus_ml2.ansible.update_bridge')
