@@ -40,23 +40,6 @@ def bridge_name(network_id, prefix='brq'):
     return prefix + network_id[0:11]
 
 
-@app.route('/networks/<network_id>', methods=['DELETE'])
-def delete_bridge(network_id):
-    """Generic call for deleting a linux bridge
-    Args:
-        network_id(str): network_id provided by openstack. first 12 chars
-        matches name of the generated bridge
-    Returns:
-        200 Status OK back to the client, if everything is okay.
-        400 Failed to the client if something is wrong.
-    """
-    errmsg = cumulus_ml2_ansible.delete_bridge(bridge_name(network_id))
-    if errmsg:
-        return send_400_fail(errmsg)
-    else:
-        return send_200_ok()
-
-
 @app.route('/networks/<network_id>/<port_id>', methods=['PUT'])
 def add_port_to_bridge(network_id, port_id):
     """Generic call for adding a port to a linux bridge. If the bridge

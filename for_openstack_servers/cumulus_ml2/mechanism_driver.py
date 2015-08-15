@@ -92,6 +92,24 @@ class CumulusMechanismDriver(MechanismDriver):
                 raise MechanismDriverError()
 
     def _remove_from_switch(self, agent, context):
-        LOG.info(
-            _LI('In _remove_from_switch')
-        )
+        network_id = context.current['id']
+        vlan = context.current['provider:segmentation_id']
+
+        switches = agent['configurations']['switches']
+        for _switchname, _switchport in switches.items():
+            subiface = '.'.join([_switchport, unicode(vlan)])
+            _request = requests.delete(
+                BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
+                                       port=self.protocol_port,
+                                       switch_name_or_ip=_switchname,
+                                       network=network_id,
+                                       port_id=subiface)
+            )
+            LOG.info(
+                _LI('Sending REST API Call to Switch %s'),
+                _request.url
+            )
+            if _request.status_code != requests.codes.ok:
+                LOG.error(
+                    _LE("Failed To Provision Switch %s"), _request.text)
+                raise MechanismDriverError()
