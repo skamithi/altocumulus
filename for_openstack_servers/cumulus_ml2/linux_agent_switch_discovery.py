@@ -51,7 +51,7 @@ class LinuxBridgeSwitchDiscoveryNeutronAgentRPC(lna.LinuxBridgeNeutronAgentRPC):
         """ read the ml2 config and add each remote switch details to the neutron DB"""
         super(LinuxBridgeSwitchDiscoveryNeutronAgentRPC, self).__init__(
             interface_mapping,
-            (polling_interval * 10)
+            polling_interval
         )
 
         switches = cfg.CONF.linux_agent_switch_discovery.switches
