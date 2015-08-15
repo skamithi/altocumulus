@@ -1,20 +1,18 @@
 from argparse import ArgumentParser
-from flask import Flask
+from flask import Flask, Response
 import cumulus_ml2.ansible_cumulus as cumulus_ml2_ansible
 
 DEFAULT_API_BIND = '0.0.0.0'
 DEFAULT_API_PORT = 8140
-DEFAULT_ROOT_HELPER = 'sudo'
 
 app = Flask(__name__)
 
 
 def send_400_fail(errmsg):
-    pass
-
+    return Response(errmsg, status=400, mimetype='text/plain')
 
 def send_200_ok():
-    pass
+    return Response(None, status=200, mimetype='text/plain')
 
 
 def bridge_name(network_id, prefix='brq'):
