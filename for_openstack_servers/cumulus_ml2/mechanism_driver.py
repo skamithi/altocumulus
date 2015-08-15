@@ -46,8 +46,24 @@ class CumulusMechanismDriver(MechanismDriver):
             filters={'agent_type': [LINUXBRIDGE_AGENT]}
         )
         for _agent in all_linux_agents:
-            if _agent['configurations'].get('switches'):
-                _linuxagent_with_switch_info.append(_agent)
+            # try 10 times to get the linux switch from DB. There is a sync
+            # issue between linux switch discovery agent and linux bridge agent.
+            # When linux bridge agent update DB it overwrites the
+            # "configurations" dict. This cause switch info to be deleted. the linux bridge
+            # agent needs to not overwrite the configuration dict each time it
+            # executes its polling interval. Patch may be in order to address
+            # this.
+            retries = 10
+            while retries > 0:
+                if _agent['configurations'].get('switches'):
+                    _linuxagent_with_switch_info.append(_agent)
+                    retries = 0
+                retries -= 1
+        if not _linuxagent_with_switch_info:
+            LOG.error(_LE('Failed to find linux agent with switch info. Could \
+                    be its not configured on compute node or due to sync issue \
+                    between linuxbridge agent and linux switch discovery agent'))
+            raise MechanismDriverError()
 
         return _linuxagent_with_switch_info
 
