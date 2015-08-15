@@ -4,7 +4,6 @@ from oslo.config import cfg
 from oslo_log import log as logging
 import requests
 
-from neutron.extensions import portbindings
 from neutron.i18n import _LI
 from neutron.plugins.ml2.common.exceptions import MechanismDriverError
 from neutron.plugins.ml2.driver_api import MechanismDriver
@@ -30,24 +29,8 @@ class CumulusMechanismDriver(MechanismDriver):
     """
 
     def initialize(self):
-        self.url_prefix = 'https:'
+        self.url_prefix = 'https'
         self.protocol_port = cfg.CONF.ml2_cumulus.protocol_port
-
-    def bind_port(self, context):
-        """ What does this do??
-        """
-        if context.binding_levels:
-            return  # we've already got a top binding
-
-        # assign a dynamic vlan
-        next_segment = context.allocate_dynamic_segment(
-            {'id': context.network.current, 'network_type': 'vlan'}
-        )
-
-        context.continue_binding(
-            context.segments_to_bind[0]['id'],
-            [next_segment]
-        )
 
     def agent_list(self, context):
         """ parse through all linux agents. return only those
@@ -57,8 +40,13 @@ class CumulusMechanismDriver(MechanismDriver):
         Returns:
             list of linux agents with connecting switch information
         """
+        LOG.info(_LI('context dict %s'), context.__dict__)  # DELETE
+        LOG.info(_LI('context current %s'), context.current)  # DELETE
         _linuxagent_with_switch_info = []
-        all_linux_agents = context.host_agents(LINUXBRIDGE_AGENT)
+        all_linux_agents = context._plugin.get_agents(
+            context._plugin_context,
+            filters={'agent_type': [LINUXBRIDGE_AGENT]}
+        )
         for _agent in all_linux_agents:
             if _agent['configurations'].get('switches'):
                 _linuxagent_with_switch_info.append(_agent)
@@ -70,58 +58,40 @@ class CumulusMechanismDriver(MechanismDriver):
         create bridge from cumulus, if necessary and add the switch port connecting
         to the agent (compute node) to the bridge.
         """
-        if context.segments_to_bind:
-            agents = self.agent_list(context)
-            for _agent in agents:
-                self._add_to_switch(_agent, context)
+        agents = self.agent_list(context)
+        for _agent in agents:
+            self._add_to_switch(_agent, context)
 
     def delete_network_postcommit(self, context):
         """action to take on cumulus switch after a network is deleted from neutron
         delete the bridge from cumulus
         """
-        if context.segments_to_bind:
-            agents = self.agent_list(context)
-            for _agent in agents:
-                self._remove_from_switch(_agent, context)
+        agents = self.agent_list(context)
+        for _agent in agents:
+            self._remove_from_switch(_agent, context)
 
     def _add_to_switch(self, agent, context):
-        port = context.current
-        device_id = port['device_id']
-        device_owner = port['device_owner']
-        host = port[portbindings.HOST_ID]
-        network_id = port['network_id']
-        vlan = context.bottom_bound_segment['segmentation_id']
-
-        if not (host and device_id and device_owner):
-            LOG.info(
-                _LI('host: %s device_id: %s device_owner %s. One is blank'),
-                host, device_id, device_owner)
-            return
+        network_id = context.current['id']
+        vlan = context.current['provider:segmentation_id']
 
         switches = agent['configurations']['switches']
         for _switchname, _switchport in switches.items():
-            subiface = '.'.join([_switchport, vlan])
+            subiface = '.'.join([_switchport, unicode(vlan)])
             _request = requests.put(
                 BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
+                                       port=self.protocol_port,
                                        switch_name_or_ip=_switchname,
                                        network=network_id,
                                        port_id=subiface)
             )
             LOG.info(
                 _LI('Sending the following api call to switch %s'),
-                _request
+                _request.__dict__
             )
             if _request.status_code != requests.codes.ok:
                 raise MechanismDriverError()
 
-    def _remove_from_switch(self, context):
-        port = context.current
-        device_id = port['device_id']
-        device_owner = port['device_owner']
-        host = port[portbindings.HOST_ID]
-        network_id = port['network_id']
-        vlan = context.bottom_bound_segment['segmentation_id']
-
+    def _remove_from_switch(self, agent, context):
         LOG.info(
             _LI('In _remove_from_switch')
         )
