@@ -55,9 +55,9 @@ class LinuxBridgeSwitchDiscoveryNeutronAgentRPC(lna.LinuxBridgeNeutronAgentRPC):
 
         switches = cfg.CONF.linux_agent_switch_discovery.switches
         # reset switches entry in the linux bridge DB
-        self.agent.state['configurations']['switches'] = {}
+        self.agent_state['configurations']['switches'] = {}
         for _switch in switches:
-            switchlist = self.agent.state['configurations']['switches']
+            switchlist = self.agent_state['configurations']['switches']
             (_switchname, _remoteport) = _switch.split(':')
             switchlist[_switchname] = _remoteport
             LOG.info(_LI('Linux Bridge Switch Discovery adding %s : %s to Neutron L2 Agent DB'),
