@@ -49,7 +49,6 @@ class CumulusMechanismDriver(MechanismDriver):
             [next_segment]
         )
 
-    @property
     def agent_list(self, context):
         """ parse through all linux agents. return only those
         that have switch information set. Other linux bridge agents can exist
