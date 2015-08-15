@@ -13,7 +13,8 @@ that the compute node is connected to.
 Example:
 
     [linux_agent_switch_discovery]
-    switches=['10.1.1.1:bond0']
+    switches = 192.168.20.20:bond0,192.168.20.19:bond0
+
 
 and copies it into the linux agent ``configuration`` hash
 
@@ -60,7 +61,7 @@ class LinuxBridgeSwitchDiscoveryNeutronAgentRPC(lna.LinuxBridgeNeutronAgentRPC):
             switchlist = self.agent_state['configurations']['switches']
             (_switchname, _remoteport) = _switch.split(':')
             switchlist[_switchname] = _remoteport
-            LOG.info(_LI('Linux Bridge Switch Discovery adding %s : %s to Neutron L2 Agent DB'),
+            LOG.info(_LI('Adding %s : %s to Neutron L2 Agent DB'),
                      _switchname, _remoteport)
 
 
