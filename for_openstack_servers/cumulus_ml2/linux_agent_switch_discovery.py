@@ -13,7 +13,7 @@ that the compute node is connected to.
 Example:
 
     [linux_agent_switch_discovery]
-    switch_info=['10.1.1.1:bond0']
+    switches=['10.1.1.1:bond0']
 
 and copies it into the linux agent ``configuration`` hash
 
@@ -38,7 +38,7 @@ LOG = logging.getLogger(__name__)
 
 
 CONFIG = [
-    cfg.StrOpt('switch_info', default=[],
+    cfg.StrOpt('switches', default=[],
                help=_('list of switch name/ip and remote switch port connected to this compute node'))
 ]
 

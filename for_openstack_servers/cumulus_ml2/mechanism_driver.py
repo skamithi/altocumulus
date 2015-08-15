@@ -1,77 +1,120 @@
-import json
-
+"""  This module contains the ML2 mechanism driver for Cumulus Linux
+"""
 from oslo.config import cfg
+from oslo_log import log as logging
 import requests
-from requests.exceptions import HTTPError
 
 from neutron.extensions import portbindings
-from neutron.plugins.ml2.common.exceptions import MechanismDriverError 
+from neutron.i18n import _LI
+from neutron.plugins.ml2.common.exceptions import MechanismDriverError
 from neutron.plugins.ml2.driver_api import MechanismDriver
 
-from altocumulus.ml2 import config
+LOG = logging.getLogger(__name__)
+BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{network}/{port_id}'
+LINUXBRIDGE_AGENT = 'Linux bridge agent'
 
-NETWORKS_URL = '{base}/networks/{network}'
-HOSTS_URL = '{base}/networks/{network}/hosts/{host}'
 
 class CumulusMechanismDriver(MechanismDriver):
-    """
-    Mechanism driver for Cumulus Linux that manages connectivity between switches
-    and (compute) hosts using the Altocumulus API
 
+    """Mechanism driver for Cumulus Linux that manages connectivity between switches
+    and (compute) hosts using the Altocumulus API
     Inspired by the Arista ML2 mechanism driver
     """
+
     def initialize(self):
-        self.url = cfg.CONF.ml2_cumulus.url
+        self.url_prefix = 'https:'
+        self.protocol_port = cfg.CONF.ml2_cumulus.protocol_port
+
+    def bind_port(self, context):
+        """ What does this do??
+        """
+        if context.binding_levels:
+            return  # we've already got a top binding
+
+        # assign a dynamic vlan
+        next_segment = context.allocate_dynamic_segment(
+            {'id': context.network.current, 'network_type': 'vlan'}
+        )
+
+        context.continue_binding(
+            context.segments_to_bind[0]['id'],
+            [next_segment]
+        )
+
+    @property
+    def agent_list(self, context):
+        """ parse through all linux agents. return only those
+        that have switch information set. Other linux bridge agents can exist
+        like in Rackspace private cloud, linux bridge agent is setup on L3 agent lxc
+        container
+        Returns:
+            list of linux agents with connecting switch information
+        """
+        _linuxagent_with_switch_info = []
+        all_linux_agents = context.host_agents(LINUXBRIDGE_AGENT)
+        for _agent in all_linux_agents:
+            if _agent['configurations'].get('switches'):
+                _linuxagent_with_switch_info.append(_agent)
+
+        return _linuxagent_with_switch_info
 
     def create_network_postcommit(self, context):
-        network_id = context.current['id']
-        vlan_id = context.network_segments[0].segmentation_id
-
-        request = {
-            'vlan': vlan_id,
-        }
-
-        r = requests.put(
-            NETWORKS_URL.format(base=self.url, network=network_id),
-            data=json.dumps(request))
-
-        if r.status_code != requests.codes.ok:
-            raise MechanismDriverError()
+        """action to take on cumulus switch after a network is added to neutron
+        create bridge from cumulus, if necessary and add the switch port connecting
+        to the agent (compute node) to the bridge.
+        """
+        if context.segments_to_bind:
+            agents = self.agent_list(context)
+            for _agent in agents:
+                self._add_to_switch(_agent, context)
 
     def delete_network_postcommit(self, context):
-        network_id = context.current['id']
+        """action to take on cumulus switch after a network is deleted from neutron
+        delete the bridge from cumulus
+        """
+        if context.segments_to_bind:
+            agents = self.agent_list(context)
+            for _agent in agents:
+                self._remove_from_switch(_agent, context)
 
-        r = requests.delete(
-            NETWORKS_URL.format(base=self.url, network=network_id))
-
-        if r.status_code != requests.codes.ok:
-            raise MechanismDriverError()
-
-    def create_port_postcommit(self, context):
+    def _add_to_switch(self, agent, context):
         port = context.current
-
         device_id = port['device_id']
         device_owner = port['device_owner']
         host = port[portbindings.HOST_ID]
         network_id = port['network_id']
+        vlan = context.bottom_bound_segment['segmentation_id']
 
         if not (host and device_id and device_owner):
+            LOG.info(
+                _LI('host: %s device_id: %s device_owner %s. One is blank'),
+                host, device_id, device_owner)
             return
 
-        r = requests.put(
-            HOSTS_URL.format(base=self.url, network=network_id, host=host))
+        switches = agent['configurations']['switches']
+        for _switchname, _switchport in switches.items():
+            subiface = '.'.join([_switchport, vlan])
+            _request = requests.put(
+                BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
+                                       switch_name_or_ip=_switchname,
+                                       network=network_id,
+                                       port_id=subiface)
+            )
+            LOG.info(
+                _LI('Sending the following api call to switch %s'),
+                _request
+            )
+            if _request.status_code != requests.codes.ok:
+                raise MechanismDriverError()
 
-        if r.status_code != requests.codes.ok:
-            raise MechanismDriverError()
-
-    def delete_port_postcommit(self, context):
+    def _remove_from_switch(self, context):
         port = context.current
-
+        device_id = port['device_id']
+        device_owner = port['device_owner']
         host = port[portbindings.HOST_ID]
         network_id = port['network_id']
+        vlan = context.bottom_bound_segment['segmentation_id']
 
-        r = requests.delete(
-            HOSTS_URL.format(base=self.url, network=network_id, host=host))
-
-        if r.status_code != requests.codes.ok:
-            raise MechanismDriverError()
+        LOG.info(
+            _LI('In _remove_from_switch')
+        )
