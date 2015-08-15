@@ -14,6 +14,14 @@ BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{network}/
 LINUXBRIDGE_AGENT = 'Linux bridge agent'
 
 
+CONFIG = [
+    cfg.StrOpt('protocol_port', default='8140',
+               help=_('port to send API request to cumulus switch'))
+]
+
+cfg.CONF.register_opts(CONFIG, "ml2_cumulus")
+
+
 class CumulusMechanismDriver(MechanismDriver):
 
     """Mechanism driver for Cumulus Linux that manages connectivity between switches
