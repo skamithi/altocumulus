@@ -4,7 +4,7 @@ from oslo.config import cfg
 from oslo_log import log as logging
 import requests
 
-from neutron.i18n import _LI
+from neutron.i18n import _LI, _LE
 from neutron.plugins.ml2.common.exceptions import MechanismDriverError
 from neutron.plugins.ml2.driver_api import MechanismDriver
 
@@ -29,7 +29,7 @@ class CumulusMechanismDriver(MechanismDriver):
     """
 
     def initialize(self):
-        self.url_prefix = 'https'
+        self.url_prefix = 'http'
         self.protocol_port = cfg.CONF.ml2_cumulus.protocol_port
 
     def agent_list(self, context):
@@ -40,8 +40,6 @@ class CumulusMechanismDriver(MechanismDriver):
         Returns:
             list of linux agents with connecting switch information
         """
-        LOG.info(_LI('context dict %s'), context.__dict__)  # DELETE
-        LOG.info(_LI('context current %s'), context.current)  # DELETE
         _linuxagent_with_switch_info = []
         all_linux_agents = context._plugin.get_agents(
             context._plugin_context,
@@ -85,10 +83,12 @@ class CumulusMechanismDriver(MechanismDriver):
                                        port_id=subiface)
             )
             LOG.info(
-                _LI('Sending the following api call to switch %s'),
-                _request.__dict__
+                _LI('Sending REST API Call to Switch %s'),
+                _request.url
             )
             if _request.status_code != requests.codes.ok:
+                LOG.error(
+                    _LE("Failed To Provision Switch %s"), _request.text)
                 raise MechanismDriverError()
 
     def _remove_from_switch(self, agent, context):
