@@ -60,6 +60,22 @@ class CumulusMechanismDriver(MechanismDriver):
         for _agent in agents:
             self._add_to_switch(_agent, context)
 
+    def create_port_postcommit(self, context):
+        """This is overkill to ensure the trunk port on the switch is created.
+        Each time a new port is created, check that the vlan exists on the switch.
+        """
+        agents = self.agent_list(context)
+        for _agent in agents:
+            self._add_to_switch(_agent, context)
+
+    def update_port_postcommit(self, context):
+        """This is overkill to ensure the trunk port on the switch is updated.
+        Each time a new port is created, check that the vlan exists on the switch.
+        """
+        agents = self.agent_list(context)
+        for _agent in agents:
+            self._add_to_switch(_agent, context)
+
     def delete_network_postcommit(self, context):
         """action to take on cumulus switch after a network is deleted from neutron
         delete the bridge from cumulus
@@ -69,6 +85,16 @@ class CumulusMechanismDriver(MechanismDriver):
             self._remove_from_switch(_agent, context)
 
     def _add_to_switch(self, agent, context):
+        """This sends a Rest call to the Cumulus switch to add the
+        switch port to the bridge with same name as the one on the
+        openstack server. This adds the same vlan to the trunk to all switches
+        listed in the ``switches`` dict.
+        Args:
+            agent(dict): This has a dict with the switches compute nodes
+                        connects to
+            context(object): This has information about the vlan id to assign
+                        on the switch port
+        """
         network_id = context.current['id']
         vlan = context.current['provider:segmentation_id']
 
@@ -92,6 +118,16 @@ class CumulusMechanismDriver(MechanismDriver):
                 raise MechanismDriverError()
 
     def _remove_from_switch(self, agent, context):
+        """ Removes a port from the bridge with the same name as the one
+        on the compute node. If it is the last port in the bridge, it deletes
+        the bridge
+        Args:
+            agent(dict): This has a dict with the switches compute nodes
+                        connects to
+            context(object): This has information about the vlan id to assign
+                        on the switch port
+
+        """
         network_id = context.current['id']
         vlan = context.current['provider:segmentation_id']
 
