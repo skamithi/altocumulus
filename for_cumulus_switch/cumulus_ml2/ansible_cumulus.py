@@ -43,7 +43,10 @@ def update_bridge(bridgename, bridgemems):
     _error = results.get('dark')
     if _error:
         return _error['localhost']['msg']
-    return reload_config()
+    itworked = results.get('contacted')
+    # if the change actually occurred reload the config
+    if itworked.get('changed'):
+        return reload_config()
 
 
 def delete_bridge(bridgename):
@@ -64,7 +67,10 @@ def delete_bridge(bridgename):
     _error = results.get('dark')
     if _error:
         return _error['localhost']['msg']
-    return reload_config()
+    itworked = results.get('contacted')
+    # if the change actually occurred reload the config
+    if itworked.get('changed'):
+        return reload_config()
 
 
 def add_to_bridge(bridgename, port_id):
