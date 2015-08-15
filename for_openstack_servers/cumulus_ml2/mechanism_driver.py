@@ -60,22 +60,6 @@ class CumulusMechanismDriver(MechanismDriver):
         for _agent in agents:
             self._add_to_switch(_agent, context)
 
-    def create_port_postcommit(self, context):
-        """This is overkill to ensure the trunk port on the switch is created.
-        Each time a new port is created, check that the vlan exists on the switch.
-        """
-        agents = self.agent_list(context)
-        for _agent in agents:
-            self._add_to_switch(_agent, context)
-
-    def update_port_postcommit(self, context):
-        """This is overkill to ensure the trunk port on the switch is updated.
-        Each time a new port is created, check that the vlan exists on the switch.
-        """
-        agents = self.agent_list(context)
-        for _agent in agents:
-            self._add_to_switch(_agent, context)
-
     def delete_network_postcommit(self, context):
         """action to take on cumulus switch after a network is deleted from neutron
         delete the bridge from cumulus
