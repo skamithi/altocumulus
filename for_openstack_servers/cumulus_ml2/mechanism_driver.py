@@ -9,13 +9,33 @@ from neutron.plugins.ml2.common.exceptions import MechanismDriverError
 from neutron.plugins.ml2.driver_api import MechanismDriver
 
 LOG = logging.getLogger(__name__)
-BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{network}/{port_id}'
+BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{vlan}/{network_id}/{port_id}'
 LINUXBRIDGE_AGENT = 'Linux bridge agent'
 
+"""
+Example for non vlan aware mode.
+host lists are separated by commas
+port listings are separated using semicolons
+192.168.20.20 lists 2 ports "bond0" and "peerlink"
+192.168.20.19 lists "bond0" and "peerlink".
+
+
+    [ml2_cumulus]
+    switches = 192.168.20.20:bond0;peerlink,192.168.20.19:bond0;peerlink
+
+Example for vlan aware mode. no need to mention ports. all ports in
+the bridge get the vlan assigned.
+    [ml2_cumulus]
+    switches = 192.168.20.20
+
+"""
 
 CONFIG = [
     cfg.StrOpt('protocol_port', default='8140',
-               help=_('port to send API request to cumulus switch'))
+               help=_('port to send API request to cumulus switch')),
+    cfg.ListOpt('switches', default=[],
+                help=_('list of switch name/ip and remote switch port connected to this compute node'))
+
 ]
 
 cfg.CONF.register_opts(CONFIG, "ml2_cumulus")
@@ -31,85 +51,72 @@ class CumulusMechanismDriver(MechanismDriver):
     def initialize(self):
         self.url_prefix = 'http'
         self.protocol_port = cfg.CONF.ml2_cumulus.protocol_port
+        self.switches = process_switch_config(cfg.CONF.ml2_cumulus.switches)
 
-    def agent_list(self, context):
-        """ parse through all linux agents. return only those
-        that have switch information set. Other linux bridge agents can exist
-        like in Rackspace private cloud, linux bridge agent is setup on L3 agent lxc
-        container
+    def process_switch_config(self, switch_list):
+        """ take the ini switch list config and convert it to a dict that looks
+        like this
+
+          { '192.168.20.20': ['bond0', 'peerlink'],
+            'sw25': ['bond0', 'peerlink'] }
+        Args:
+            switch_list(string): String from ml2_conf.ini config that has list
+            of switches and ports that need to be dynamically provisioned
         Returns:
-            list of linux agents with connecting switch information
+            array of switches, each switch has contains a name and port list
         """
-        _linuxagent_with_switch_info = []
-        all_linux_agents = context._plugin.get_agents(
-            context._plugin_context,
-            filters={'agent_type': [LINUXBRIDGE_AGENT]}
-        )
-        for _agent in all_linux_agents:
-            # try 10 times to get the linux switch from DB. There is a sync
-            # issue between linux switch discovery agent and linux bridge agent.
-            # When linux bridge agent update DB it overwrites the
-            # "configurations" dict. This cause switch info to be deleted. the linux bridge
-            # agent needs to not overwrite the configuration dict each time it
-            # executes its polling interval. Patch may be in order to address
-            # this.
-            retries = 10
-            while retries > 0:
-                if _agent['configurations'].get('switches'):
-                    _linuxagent_with_switch_info.append(_agent)
-                    retries = 0
-                retries -= 1
-        if not _linuxagent_with_switch_info:
-            LOG.error(_LE('Failed to find linux agent with switch info. Could \
-                    be its not configured on compute node or due to sync issue \
-                    between linuxbridge agent and linux switch discovery agent'))
-            raise MechanismDriverError()
-
-        return _linuxagent_with_switch_info
+        final_switch_list = []
+        for _switchentry in switch_list:
+            _switcharr = _switchentry.split(':')
+            if len(_switcharr) == 2:
+              _ports = _switcharr[1]
+              _ports = _ports.split(';')
+            else:
+              _ports = ['none']
+              _hostname = _switcharr[0]
+        final_switch_list.append({ 'name': _hostname, "ports": _ports })
+        return final_switch_list
 
     def create_network_postcommit(self, context):
         """action to take on cumulus switch after a network is added to neutron
         create bridge from cumulus, if necessary and add the switch port connecting
         to the agent (compute node) to the bridge.
         """
-        agents = self.agent_list(context)
-        for _agent in agents:
-            self._add_to_switch(_agent, context)
+        for _switch in self.switches:
+            self._add_to_switch(_switch, context)
 
     def delete_network_postcommit(self, context):
         """action to take on cumulus switch after a network is deleted from neutron
         delete the bridge from cumulus
         """
-        agents = self.agent_list(context)
-        for _agent in agents:
-            self._remove_from_switch(_agent, context)
+        for _switch in self.switches:
+            self._remove_from_switch(_switch, context)
 
-    def _add_to_switch(self, agent, context):
+    def _add_to_switch(self, _switch, context):
         """This sends a Rest call to the Cumulus switch to add the
         switch port to the bridge with same name as the one on the
         openstack server. This adds the same vlan to the trunk to all switches
         listed in the ``switches`` dict.
         Args:
-            agent(dict): This has a dict with the switches compute nodes
-                        connects to
+            _switch(dict): This has switch a compute node connects to.
             context(object): This has information about the vlan id to assign
                         on the switch port
         """
         network_id = context.current['id']
-        vlan = context.current['provider:segmentation_id']
+        vlanid = context.current['provider:segmentation_id']
 
-        switches = agent['configurations']['switches']
-        for _switchname, _switchport in switches.items():
-            subiface = '.'.join([_switchport, unicode(vlan)])
+        # BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{vlan}/{network_id}/{port_id}'
+        for _switchport in _switch:
             _request = requests.put(
-                BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
-                                       port=self.protocol_port,
-                                       switch_name_or_ip=_switchname,
-                                       network=network_id,
-                                       port_id=subiface)
-            )
+                    BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
+                        port=self.protocol_port,
+                        switch_name_or_ip=_switch.k,
+                        vlanid=unicode(vlan),
+                        network=network_id,
+                        port_id=_switchport)
+                    )
             LOG.info(
-                _LI('Sending REST API Call to Switch %s'),
+                _LI('Sending PUT API Call to Switch %s'),
                 _request.url
             )
             if _request.status_code != requests.codes.ok:
@@ -118,31 +125,30 @@ class CumulusMechanismDriver(MechanismDriver):
                 raise MechanismDriverError()
 
     def _remove_from_switch(self, agent, context):
-        """ Removes a port from the bridge with the same name as the one
-        on the compute node. If it is the last port in the bridge, it deletes
-        the bridge
+        """This sends a Rest call to the Cumulus switch to add the
+        switch port to the bridge with same name as the one on the
+        openstack server. This adds the same vlan to the trunk to all switches
+        listed in the ``switches`` dict.
         Args:
-            agent(dict): This has a dict with the switches compute nodes
-                        connects to
+            _switch(dict): This has switch a compute node connects to.
             context(object): This has information about the vlan id to assign
                         on the switch port
-
         """
         network_id = context.current['id']
-        vlan = context.current['provider:segmentation_id']
+        vlanid = context.current['provider:segmentation_id']
 
-        switches = agent['configurations']['switches']
-        for _switchname, _switchport in switches.items():
-            subiface = '.'.join([_switchport, unicode(vlan)])
+        # BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{vlan}/{network_id}/{port_id}'
+        for _switchport in _switch:
             _request = requests.delete(
-                BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
-                                       port=self.protocol_port,
-                                       switch_name_or_ip=_switchname,
-                                       network=network_id,
-                                       port_id=subiface)
-            )
+                    BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
+                        port=self.protocol_port,
+                        switch_name_or_ip=_switch.k,
+                        vlanid=unicode(vlan),
+                        network=network_id,
+                        port_id=_switchport)
+                    )
             LOG.info(
-                _LI('Sending REST API Call to Switch %s'),
+                _LI('Sending DELETE API Call to Switch %s'),
                 _request.url
             )
             if _request.status_code != requests.codes.ok:
