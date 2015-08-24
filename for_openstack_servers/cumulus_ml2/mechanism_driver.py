@@ -52,6 +52,10 @@ class CumulusMechanismDriver(MechanismDriver):
         self.url_prefix = 'http'
         self.protocol_port = cfg.CONF.ml2_cumulus.protocol_port
         self.switches = process_switch_config(cfg.CONF.ml2_cumulus.switches)
+        if self.switches:
+            LOG.info(_LI('switches found in ml2_conf files %s'), self.switches)
+        else:
+            LOG.info(_LI('no switches in ml2_conf files'))
 
     def process_switch_config(self, switch_list):
         """ take the ini switch list config and convert it to a dict that looks
@@ -69,12 +73,12 @@ class CumulusMechanismDriver(MechanismDriver):
         for _switchentry in switch_list:
             _switcharr = _switchentry.split(':')
             if len(_switcharr) == 2:
-              _ports = _switcharr[1]
-              _ports = _ports.split(';')
+                _ports = _switcharr[1]
+                _ports = _ports.split(';')
             else:
-              _ports = ['none']
-              _hostname = _switcharr[0]
-        final_switch_list.append({ 'name': _hostname, "ports": _ports })
+                _ports = ['none']
+                _hostname = _switcharr[0]
+            final_switch_list.append({ 'name': _hostname, "ports": _ports })
         return final_switch_list
 
     def create_network_postcommit(self, context):
@@ -102,27 +106,34 @@ class CumulusMechanismDriver(MechanismDriver):
             context(object): This has information about the vlan id to assign
                         on the switch port
         """
-        network_id = context.current['id']
-        vlanid = context.current['provider:segmentation_id']
+        _network = context.current['id']
+        _vlanid = context.current['provider:segmentation_id']
 
         # BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{vlan}/{network_id}/{port_id}'
-        for _switchport in _switch:
-            _request = requests.put(
-                    BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
-                        port=self.protocol_port,
-                        switch_name_or_ip=_switch.k,
-                        vlanid=unicode(vlan),
-                        network=network_id,
-                        port_id=_switchport)
-                    )
-            LOG.info(
-                _LI('Sending PUT API Call to Switch %s'),
-                _request.url
-            )
-            if _request.status_code != requests.codes.ok:
+        for _switchport in _switch.get('ports'):
+            try:
+                _request = requests.put(
+                        BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
+                            port=self.protocol_port,
+                            switch_name_or_ip=_switch.get('name'),
+                            vlan=unicode(_vlanid),
+                            network_id=_network,
+                            port_id=_switchport)
+                        )
+                LOG.info(
+                    _LI('Sending PUT API Call to Switch %s'),
+                    _request.url
+                )
+                if _request.status_code != requests.codes.ok:
+                    LOG.error(
+                        _LE("Failed To Provision Switch %s"), _request.text)
+                    raise MechanismDriverError()
+            except ConnectionError:
                 LOG.error(
-                    _LE("Failed To Provision Switch %s"), _request.text)
-                raise MechanismDriverError()
+                    _LE('Failed to connect to switch %s'),
+                    _request.url
+                )
+
 
     def _remove_from_switch(self, agent, context):
         """This sends a Rest call to the Cumulus switch to add the

@@ -59,7 +59,7 @@ def add_port_to_bridge(network_id, port_id):
         return send_200_ok()
 
 
-@app.route('/networks/<vlan_id>/<network_id/<port_id>', methods=['DELETE'])
+@app.route('/networks/<vlan_id>/<network_id>/<port_id>', methods=['DELETE'])
 def delete_port_to_bridge(network_id, port_id):
     """Generic call for deleting a port to a linux bridge
     Args:
