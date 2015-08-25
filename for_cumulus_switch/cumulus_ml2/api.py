@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from flask import Flask, Response
-import cumulus_ml2.ansible_cumulus as cumulus_ml2_ansible
+import cumulus_ml2.cumulus_ansible as cumulus_ml2_ansible
 
 DEFAULT_API_BIND = '0.0.0.0'
 DEFAULT_API_PORT = 8140
@@ -39,8 +39,8 @@ def bridge_name(network_id, prefix='brq'):
 
     return prefix + network_id[0:11]
 
-@app.route('/networks/<vlan_id>/<network_id>/<port_id>', methods=['PUT'])
-def add_port_to_bridge(network_id, port_id):
+@app.route('/networks/<network_id>/<vlan_id>/<port_id>', methods=['PUT'])
+def add_port_to_bridge(network_id, vlan_id, port_id):
     """Generic call for adding a port to a linux bridge. If the bridge
     does not exist it will create it.
     Args:
@@ -51,7 +51,13 @@ def add_port_to_bridge(network_id, port_id):
         400 Failed to the client if something is wrong.
     """
     # create a bridge if is not there..If it exists, just return none
-    errmsg = cumulus_ml2_ansible.add_to_bridge(
+    from nose.tools import set_trace; set_trace()
+    cumulus_ansible = cumulus_ml2_ansible.CumulusML2Ansible(
+        bridgename=bridge_name(network_id),
+        vlan=vlan_id,
+        port=port_id
+    )
+    errmsg = cumulus_ansible.add_to_bridge(
         bridge_name(network_id), vlan_id, port_id)
     if errmsg:
         return send_400_fail(errmsg)
@@ -60,7 +66,7 @@ def add_port_to_bridge(network_id, port_id):
 
 
 @app.route('/networks/<vlan_id>/<network_id>/<port_id>', methods=['DELETE'])
-def delete_port_to_bridge(network_id, port_id):
+def delete_port_to_bridge(vlan_id, network_id, port_id):
     """Generic call for deleting a port to a linux bridge
     Args:
         network_id(str): network_id provided by openstack. first 12 chars

@@ -3,6 +3,7 @@
 from oslo.config import cfg
 from oslo_log import log as logging
 import requests
+from requests.exceptions import ConnectionError
 
 from neutron.i18n import _LI, _LE
 from neutron.plugins.ml2.common.exceptions import MechanismDriverError
@@ -51,7 +52,7 @@ class CumulusMechanismDriver(MechanismDriver):
     def initialize(self):
         self.url_prefix = 'http'
         self.protocol_port = cfg.CONF.ml2_cumulus.protocol_port
-        self.switches = process_switch_config(cfg.CONF.ml2_cumulus.switches)
+        self.switches = self.process_switch_config(cfg.CONF.ml2_cumulus.switches)
         if self.switches:
             LOG.info(_LI('switches found in ml2_conf files %s'), self.switches)
         else:
