@@ -3,7 +3,11 @@
 *.swp
 *.swo
 /.vagrant
-/*.egg-info
-/build
+*/*.egg-info
+*/pbr*
+*/dist
+*/AUTHORS
+*/ChangeLog
 /dist
 */Session.vim
+*/build
