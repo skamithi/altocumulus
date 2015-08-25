@@ -54,6 +54,37 @@ class TestApi(object):
       mock_cumulus_ansible.assert_called_with(bridgename=u'brq11112222333',
           port_id=u'bond0', vlan_id=u'2222')
 
+    @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible')
+    @mock.patch('cumulus_ml2.api.Response')
+    def test_delete_port_from_bridge_successful(self, mock_response, mock_cumulus_ansible):
+      network_id = '111122223333444'
+      vlan_id = '2222'
+      port_id = 'bond0'
+      instance = mock_cumulus_ansible.return_value
+      instance.delete_from_bridge = mock.MagicMock(
+          return_value=None)
+      response = self.app.delete(
+          '/networks/%s/%s/%s' % (network_id, vlan_id, port_id))
+      mock_response.assert_called_with(None,
+          mimetype='text/plain', status=200)
+      mock_cumulus_ansible.assert_called_with(bridgename=u'brq11112222333',
+          port_id=u'bond0', vlan_id=u'2222')
+
+    @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible')
+    @mock.patch('cumulus_ml2.api.Response')
+    def test_delete_port_from_bridge_fails(self, mock_response, mock_cumulus_ansible):
+      network_id = '111122223333444'
+      vlan_id = '2222'
+      port_id = 'bond0'
+      instance = mock_cumulus_ansible.return_value
+      instance.delete_from_bridge = mock.MagicMock(
+          return_value='failed')
+      response = self.app.delete(
+          '/networks/%s/%s/%s' % (network_id, vlan_id, port_id))
+      mock_response.assert_called_with('failed',
+          mimetype='text/plain', status=400)
+      mock_cumulus_ansible.assert_called_with(bridgename=u'brq11112222333',
+          port_id=u'bond0', vlan_id=u'2222')
 
 
 #        network_id = '1111222333323434'
