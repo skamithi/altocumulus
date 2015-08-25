@@ -51,11 +51,10 @@ def add_port_to_bridge(network_id, vlan_id, port_id):
         400 Failed to the client if something is wrong.
     """
     # create a bridge if is not there..If it exists, just return none
-    from nose.tools import set_trace; set_trace()
     cumulus_ansible = cumulus_ml2_ansible.CumulusML2Ansible(
         bridgename=bridge_name(network_id),
-        vlan=vlan_id,
-        port=port_id
+        vlan_id=vlan_id,
+        port_id=port_id
     )
     errmsg = cumulus_ansible.add_to_bridge(
         bridge_name(network_id), vlan_id, port_id)

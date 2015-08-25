@@ -27,11 +27,32 @@ class TestApi(object):
       vlan_id = '2222'
       port_id = 'bond0'
       instance = mock_cumulus_ansible.return_value
-      mock_cumulus_ansible.assert_called_with('')
-      instance.add_to_bridge = MagicMock(return_value='something bad happend')
+      instance.add_to_bridge = mock.MagicMock(
+          return_value='something bad happened')
       response = self.app.put(
           '/networks/%s/%s/%s' % (network_id, vlan_id, port_id))
-      mock_response.assert_called_with('')
+      mock_response.assert_called_with('something bad happened',
+          mimetype='text/plain', status=400)
+      mock_cumulus_ansible.assert_called_with(bridgename=u'brq11112222333',
+          port_id=u'bond0', vlan_id=u'2222')
+
+
+    @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible')
+    @mock.patch('cumulus_ml2.api.Response')
+    def test_add_port_to_bridge_no_failure_occurred(self, mock_response,
+        mock_cumulus_ansible):
+      network_id = '111122223333444'
+      vlan_id = '2222'
+      port_id = 'bond0'
+      instance = mock_cumulus_ansible.return_value
+      instance.add_to_bridge = mock.MagicMock(
+          return_value=None)
+      response = self.app.put(
+          '/networks/%s/%s/%s' % (network_id, vlan_id, port_id))
+      mock_response.assert_called_with(None,
+          mimetype='text/plain', status=200)
+      mock_cumulus_ansible.assert_called_with(bridgename=u'brq11112222333',
+          port_id=u'bond0', vlan_id=u'2222')
 
 
 

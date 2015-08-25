@@ -13,15 +13,11 @@ def get_vlan_aware_bridge():
                     return _iface
     return None
 
-class CumulusML2Ansible(bridgename=_bridgename,
-        vlan=_vlan_id
-        port=_port_id):
-    def __init__(self, bridgename=_bridgename,
-            vlan=_vlan_id
-            port=_port_id):
-        self.vlan = vlan
-        self.port = port
+class CumulusML2Ansible(object):
+    def __init__(self, bridgename, vlan_id, port_id):
+        self.port = port_id
         self.bridgename = bridgename
+        self.vlan = vlan_id
         self.vlan_aware_bridge = get_vlan_aware_bridge()
 
     def update_bridge_vlan_aware(self):
