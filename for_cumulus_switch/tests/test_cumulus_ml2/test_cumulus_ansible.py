@@ -28,7 +28,8 @@ class TestCumulusML2Ansible(object):
         instance = mock_iface.return_value
         instance.vlan_list = ['1', '2', '3']
         self.myobject.vlan = '4'
-        assert_equals(self.myobject.update_port_vlan_list(), ['1-4'])
+        self.myobject.update_port_vlan_list()
+        assert_equals(self.myobject.port_vids, ['1-4'])
 
     @mock.patch('cumulus_ml2.cumulus_ansible.netshowlib.iface')
     def test_update_bridge_vlan_list(self, mock_iface):
@@ -39,4 +40,28 @@ class TestCumulusML2Ansible(object):
         member2.vlan_list = ['3', '4']
         main_bridge.members = {'member1': member1, 'member2': member2}
         self.myobject.vlan_aware_bridge = main_bridge
-        assert_equals(self.myobject.update_bridge_vlan_list(), ['1-4'])
+        self.myobject.update_bridge_vlan_list()
+        assert_equals(self.myobject.bridge_vids, ['1-4'])
+
+    @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_vlan_aware_port_config')
+    @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_vlan_aware_bridge_config')
+    def test_add_to_bridge_vlan_aware_port_config_as_error(self,
+                                                           mock_bridge_config,
+                                                           mock_port_config):
+        mock_port_config.return_value = 'something failed'
+        assert_equals(self.myobject.add_to_bridge_vlan_aware(),
+                      'something failed')
+        assert_equals(mock_bridge_config.call_count, 0)
+        assert_equals(mock_port_config.call_count, 1)
+
+    @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_vlan_aware_port_config')
+    @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_vlan_aware_bridge_config')
+    def test_add_to_bridge_vlan_aware_bridge_config_as_error(self,
+                                                             mock_bridge_config,
+                                                             mock_port_config):
+        mock_port_config.return_value = None
+        mock_bridge_config.return_value = 'something failed'
+        assert_equals(self.myobject.add_to_bridge_vlan_aware(),
+                      'something failed')
+        assert_equals(mock_bridge_config.call_count, 1)
+        assert_equals(mock_port_config.call_count, 1)

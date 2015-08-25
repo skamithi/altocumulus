@@ -1,5 +1,8 @@
 from netshowlib import netshowlib
 from netshowlib.linux.common import create_range
+import pkg_resources
+import os
+import ansible
 
 
 def get_vlan_aware_bridge():
@@ -13,19 +16,55 @@ def get_vlan_aware_bridge():
     return None
 
 
+def update_config_via_ansible(self, modname, modargs_str):
+    install_location = pkg_resources.require('cumulus-ml2-service')[0].location
+    _library = os.path.join(install_location, '..', '..', '..',
+                            -                            'ansible_modules', 'library')
+    inv = ansible.inventory.Inventory(['localhost'])
+    results = ansible.runner.Runner(
+        module_name=modname,
+        module_path=_library,
+        become=True,
+        transport='local',
+        module_args=modargs_str, inventory=inv).run()
+    _error = results.get('dark')
+    if _error:
+        return _error['localhost']['msg']
+    itworked = results.get('contacted')
+    # if the change actually occurred reload the config
+    if itworked['localhost'].get('changed'):
+        return reload_config()
+
+
+def reload_config():
+    """ run ifreload -a to push the changes into the persistent config
+    """
+    inv = ansible.inventory.Inventory(['localhost'])
+    results = ansible.runner.Runner(
+        module_name='shell',
+        become=True,
+        transport='local',
+        module_args="/sbin/ifreload -a", inventory=inv).run()
+    _error = results.get('dark')
+    if _error:
+        return _error['localhost']['msg']
+
+
 class CumulusML2Ansible(object):
     def __init__(self, bridgename, vlan_id, port_id):
         self.port = port_id
         self.bridgename = bridgename
         self.vlan = vlan_id
         self.vlan_aware_bridge = get_vlan_aware_bridge()
+        self.port_vids = None
+        self.bridge_vids = None
 
     def update_port_vlan_list(self):
         """ removes or adds vlans to the bridge vlan list.
         """
         port_vlan_list = netshowlib.iface(self.port).vlan_list
         port_vlan_list.append(self.vlan)
-        return create_range('', set(port_vlan_list))
+        self.port_vids = create_range('', set(port_vlan_list))
 
     def update_bridge_vlan_list(self):
         """ get a list of all vlans found on the vlan aware bridge
@@ -35,9 +74,34 @@ class CumulusML2Ansible(object):
         for _member in bridgemems:
             vlan_list += (_member.vlan_list)
 
-        return create_range('', set(vlan_list))
+        self.bridge_vids = create_range('', set(vlan_list))
 
     def update_bridge_classic_mode(self):
+        pass
+
+    def update_vlan_aware_port_config(self):
+        modname = 'cl_interface'
+        modargs_str = 'name=%s vids=%s' % (self.port, ','.join(self.port_vids))
+        return update_config_via_ansible(modname, modargs_str)
+
+    def update_vlan_aware_bridge_config(self):
+        pass
+
+    def add_to_bridge_vlan_aware(self):
+        """ add vlan to bridge in vlan aware mode. adds vlan to port found plus
+        global bridge so that uplink ports gets the same config
+        """
+        errmsg = self.update_vlan_aware_port_config()
+        if errmsg:
+            return errmsg
+
+        errmsg = self.update_vlan_aware_bridge_config()
+        if errmsg:
+            return errmsg
+
+    def add_to_bridge_classic_mode(self):
+        """ add or create bridge with port in classic mode.
+        """
         pass
 
     def add_to_bridge(self):
