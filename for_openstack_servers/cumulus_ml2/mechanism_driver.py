@@ -10,7 +10,7 @@ from neutron.plugins.ml2.common.exceptions import MechanismDriverError
 from neutron.plugins.ml2.driver_api import MechanismDriver
 
 LOG = logging.getLogger(__name__)
-BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{vlan}/{network_id}/{port_id}'
+BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{network_id}/{vlan}/{port_id}'
 LINUXBRIDGE_AGENT = 'Linux bridge agent'
 
 """
