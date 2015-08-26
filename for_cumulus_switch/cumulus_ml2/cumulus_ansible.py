@@ -6,11 +6,15 @@ import ansible
 
 
 def get_vlan_aware_bridge():
+    """ checks if Cumulus switch has vlan aware bridge
+    Returns:
+        True if vlan aware bridge is present
+    """
     portlist = netshowlib.portname_list()
     for _portname in portlist:
         _iface = netshowlib.iface(_portname)
         if hasattr(_iface, 'vlan_filtering') and \
-                _iface.vlan_filtering() and \
+                _iface.vlan_filtering and \
                 _iface.is_bridge():
                     return _iface
     return None
