@@ -144,7 +144,7 @@ class CumulusMechanismDriver(MechanismDriver):
         """Send REST DELETE call to Cumulus switch to delete a vlan
         [TODO] send https call with some kind of authentication
         """
-        network_id = context.current['id']
+        _network = context.current['id']
         _vlanid = context.current['provider:segmentation_id']
 
         # BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{vlan}/{network_id}/{port_id}'
@@ -154,7 +154,7 @@ class CumulusMechanismDriver(MechanismDriver):
                                        port=self.protocol_port,
                                        switch_name_or_ip=_switch.get('name'),
                                        vlanid=unicode(_vlanid),
-                                       network=network_id,
+                                       _network_id=_network,
                                        port_id=_switchport)
             )
             LOG.info(
