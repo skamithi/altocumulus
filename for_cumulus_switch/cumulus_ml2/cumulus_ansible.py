@@ -85,7 +85,10 @@ class CumulusML2Ansible(object):
         return update_config_via_ansible(modname, modargs_str)
 
     def update_vlan_aware_bridge_config(self):
-        pass
+        modname = 'cl_bridge'
+        modargs_str = 'name=%s vids=%s' % (
+            self.vlan_aware_bridge.name, ','.join(self.bridge_vids))
+        return update_config_via_ansible(modname, modargs_str)
 
     def add_to_bridge_vlan_aware(self):
         """ add vlan to bridge in vlan aware mode. adds vlan to port found plus

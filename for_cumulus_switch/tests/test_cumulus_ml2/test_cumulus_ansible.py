@@ -72,3 +72,11 @@ class TestCumulusML2Ansible(object):
         self.myobject.port_vids = ['1-10']
         self.myobject.update_vlan_aware_port_config()
         mock_config_via_ansible.assert_called_with('cl_interface', 'name=bond0 vids=1-10')
+
+    @mock.patch('cumulus_ml2.cumulus_ansible.update_config_via_ansible')
+    def test_update_vlan_aware_bridge_config(self, mock_config_via_ansible):
+        self.myobject.vlan_aware_bridge = mock.MagicMock()
+        self.myobject.vlan_aware_bridge.name = 'bridge'
+        self.myobject.bridge_vids = ['1-20']
+        self.myobject.update_vlan_aware_bridge_config()
+        mock_config_via_ansible.assert_called_with('cl_bridge', 'name=bridge vids=1-20')
