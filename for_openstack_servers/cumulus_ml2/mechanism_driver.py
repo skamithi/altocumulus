@@ -22,13 +22,22 @@ port listings are separated using semicolons
 
 
     [ml2_cumulus]
-    switches = 192.168.20.20:bond0;peerlink,192.168.20.19:bond0;peerlink
+    switches = 192.168.20.20:bond0;bond1;bond2;peerlink
 
-Example for vlan aware mode. no need to mention ports. all ports in
-the bridge get the vlan assigned.
+Example for vlan aware mode. only mention the link that connects to the compute nodes
+it can be added as a list of ports.
     [ml2_cumulus]
-    switches = 192.168.20.20
+    switches = 192.168.20.20:bond0;bond1;bond2
 
+[TODO]
+Would be nice to just do  "switches = 192.168.20.20:bond0-10".
+the code to manage this exists in
+netshow-lib..but for now will just leave it like this for quick testing.
+I can now see the value of a dynamic lldp solution from the switch side.
+But again, need to get lldp working with Redhat consistently
+and document this cause redhat site doesn't help at all.
+also if it continues causes crashes on PTM, get ptm fixed
+to prevent further issues.
 """
 
 CONFIG = [
@@ -50,6 +59,7 @@ class CumulusMechanismDriver(MechanismDriver):
     """
 
     def initialize(self):
+        # right now for early dev, using http
         self.url_prefix = 'http'
         self.protocol_port = cfg.CONF.ml2_cumulus.protocol_port
         self.switches = self.process_switch_config(cfg.CONF.ml2_cumulus.switches)
@@ -79,7 +89,8 @@ class CumulusMechanismDriver(MechanismDriver):
             else:
                 _ports = ['none']
                 _hostname = _switcharr[0]
-            final_switch_list.append({ 'name': _hostname, "ports": _ports })
+            final_switch_list.append({'name': _hostname,
+                                      "ports": _ports})
         return final_switch_list
 
     def create_network_postcommit(self, context):
@@ -98,14 +109,8 @@ class CumulusMechanismDriver(MechanismDriver):
             self._remove_from_switch(_switch, context)
 
     def _add_to_switch(self, _switch, context):
-        """This sends a Rest call to the Cumulus switch to add the
-        switch port to the bridge with same name as the one on the
-        openstack server. This adds the same vlan to the trunk to all switches
-        listed in the ``switches`` dict.
-        Args:
-            _switch(dict): This has switch a compute node connects to.
-            context(object): This has information about the vlan id to assign
-                        on the switch port
+        """ Send REST PUT call to cumulus switch to add a vlan
+        [TODO] Send https call with  some kind of authentication
         """
         _network = context.current['id']
         _vlanid = context.current['provider:segmentation_id']
@@ -114,13 +119,13 @@ class CumulusMechanismDriver(MechanismDriver):
         for _switchport in _switch.get('ports'):
             try:
                 _request = requests.put(
-                        BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
-                            port=self.protocol_port,
-                            switch_name_or_ip=_switch.get('name'),
-                            vlan=unicode(_vlanid),
-                            network_id=_network,
-                            port_id=_switchport)
-                        )
+                    BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
+                                           port=self.protocol_port,
+                                           switch_name_or_ip=_switch.get('name'),
+                                           vlan=unicode(_vlanid),
+                                           network_id=_network,
+                                           port_id=_switchport)
+                )
                 LOG.info(
                     _LI('Sending PUT API Call to Switch %s'),
                     _request.url
@@ -135,30 +140,23 @@ class CumulusMechanismDriver(MechanismDriver):
                     _request.url
                 )
 
-
-    def _remove_from_switch(self, agent, context):
-        """This sends a Rest call to the Cumulus switch to add the
-        switch port to the bridge with same name as the one on the
-        openstack server. This adds the same vlan to the trunk to all switches
-        listed in the ``switches`` dict.
-        Args:
-            _switch(dict): This has switch a compute node connects to.
-            context(object): This has information about the vlan id to assign
-                        on the switch port
+    def _remove_from_switch(self, _switch, context):
+        """Send REST DELETE call to Cumulus switch to delete a vlan
+        [TODO] send https call with some kind of authentication
         """
         network_id = context.current['id']
-        vlanid = context.current['provider:segmentation_id']
+        _vlanid = context.current['provider:segmentation_id']
 
         # BRIDGE_PORT_URL = '{url_prefix}://{switch_name_or_ip}:{port}/networks/{vlan}/{network_id}/{port_id}'
-        for _switchport in _switch:
+        for _switchport in _switch.get('ports'):
             _request = requests.delete(
-                    BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
-                        port=self.protocol_port,
-                        switch_name_or_ip=_switch.k,
-                        vlanid=unicode(vlan),
-                        network=network_id,
-                        port_id=_switchport)
-                    )
+                BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
+                                       port=self.protocol_port,
+                                       switch_name_or_ip=_switch.k,
+                                       vlanid=unicode(_vlanid),
+                                       network=network_id,
+                                       port_id=_switchport)
+            )
             LOG.info(
                 _LI('Sending DELETE API Call to Switch %s'),
                 _request.url
