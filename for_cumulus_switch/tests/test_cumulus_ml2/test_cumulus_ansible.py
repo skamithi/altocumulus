@@ -22,8 +22,14 @@ class TestCumulusML2Ansible(object):
         self.myobject.in_vlan_aware_mode = mock.MagicMock(return_value=True)
         self.myobject.delete_from_bridge_vlan_aware = mock.MagicMock(
             return_value='exec delete bridge vlan aware func')
-        assert_equals(self.myobject.delete_from_bridge(), 'exec delete bridge vlan aware func')
+        assert_equals(self.myobject.delete_from_bridge(),
+                      'exec delete bridge vlan aware func')
 
+    def test_in_vlan_aware_mode(self):
+        self.myobject.vlan_aware_bridge = None
+        assert_equals(self.myobject.in_vlan_aware_mode(), False)
+        self.myobject.vlan_aware_bridge = mock.MagicMock()
+        assert_equals(self.myobject.in_vlan_aware_mode(), True)
 
     def test_add_to_bridge_classic_mode(self):
         self.myobject.in_vlan_aware_mode = mock.MagicMock(return_value=False)

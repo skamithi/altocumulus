@@ -89,16 +89,32 @@ class CumulusML2Ansible(object):
 
         self.bridge_vids = create_range('', set(vlan_list))
 
+    def in_vlan_aware_mode(self):
+        """ check if switch is in vlan aware mode
+        Returns:
+            True if in vlan aware mode
+        """
+        if self.vlan_aware_bridge:
+            return True
+        return False
+
     def update_bridge_classic_mode(self):
         pass
 
     def update_vlan_aware_port_config(self):
+        """ runs function to add/remove vlan from port vlan list then sends
+        appropriate module and module arguments to ansible to make the config change
+        """
         self.update_port_vlan_list()
         modname = 'cl_interface'
         modargs_str = 'name=%s vids=%s' % (self.port, ','.join(self.port_vids))
         return update_config_via_ansible(modname, modargs_str)
 
     def update_vlan_aware_bridge_config(self):
+        """ runs function to add/remove vlan from bridge vlan list then
+        sends appropriate module and module arguments to ansible to make the
+        config change
+        """
         self.update_bridge_vlan_list()
         modname = 'cl_bridge'
         modargs_str = 'name=%s vids=%s' % (
@@ -108,6 +124,8 @@ class CumulusML2Ansible(object):
     def add_to_bridge_vlan_aware(self):
         """ add vlan to bridge in vlan aware mode. adds vlan to port found plus
         global bridge so that uplink ports gets the same config
+        Returns:
+            error string if failed
         """
         errmsg = self.update_vlan_aware_port_config()
         if errmsg:
@@ -119,6 +137,8 @@ class CumulusML2Ansible(object):
 
     def delete_from_bridge_vlan_aware(self):
         """ delete vlan from vlan aware bridge
+        Returns:
+            error string if failed
         """
         errmsg = self.update_vlan_aware_port_config()
         if errmsg:
@@ -134,12 +154,19 @@ class CumulusML2Ansible(object):
         pass
 
     def add_to_bridge(self):
+        """ generic function to add a vlan(and/or) port to a bridge. checks if switch is running
+        in vlan aware mode or classic mode and adds to the appropriate bridge and/or port.
+        """
         if self.in_vlan_aware_mode():
             return self.add_to_bridge_vlan_aware()
         else:
             return self.add_to_bridge_classic_mode()
 
     def delete_from_bridge(self):
+        """ generic function to remove a vlan(and/or) port from  a bridge. checks if switch
+        is running in vlan aware mode or classic mode and removes the appropriate
+        port/vlan from the bridge
+        """
         if self.in_vlan_aware_mode():
             return self.delete_from_bridge_vlan_aware()
         else:
