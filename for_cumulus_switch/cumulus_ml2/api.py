@@ -54,7 +54,8 @@ def add_port_to_bridge(network_id, vlan_id, port_id):
     cumulus_ansible = cumulus_ml2_ansible.CumulusML2Ansible(
         bridgename=bridge_name(network_id),
         vlan_id=vlan_id,
-        port_id=port_id
+        port_id=port_id,
+        delete_vlan=False
     )
     errmsg = cumulus_ansible.add_to_bridge()
     if errmsg:
@@ -76,7 +77,8 @@ def delete_port_to_bridge(network_id, vlan_id, port_id):
     cumulus_ansible = cumulus_ml2_ansible.CumulusML2Ansible(
         bridgename=bridge_name(network_id),
         vlan_id=vlan_id,
-        port_id=port_id
+        port_id=port_id,
+        delete_vlan=True
     )
     errmsg = cumulus_ansible.delete_from_bridge()
     if errmsg:

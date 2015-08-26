@@ -33,7 +33,7 @@ class TestApi(object):
         mock_response.assert_called_with('something bad happened',
                                          mimetype='text/plain', status=400)
         mock_cumulus_ansible.assert_called_with(bridgename=u'brq11112222333',
-                                                port_id=u'bond0', vlan_id=u'2222')
+                                                port_id=u'bond0', vlan_id=u'2222', delete_vlan=False)
 
     @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible')
     @mock.patch('cumulus_ml2.api.Response')
@@ -51,8 +51,6 @@ class TestApi(object):
             '/networks/%s/%s/%s' % (network_id, vlan_id, port_id))
         mock_response.assert_called_with(None,
                                          mimetype='text/plain', status=200)
-        mock_cumulus_ansible.assert_called_with(bridgename=u'brq11112222333',
-                                                port_id=u'bond0', vlan_id=u'2222')
         assert_equals(mock_cumulus_ansible.mock_calls[1],
                       add_to_bridge_func_call)
 
@@ -72,7 +70,8 @@ class TestApi(object):
         mock_response.assert_called_with(None,
                                          mimetype='text/plain', status=200)
         mock_cumulus_ansible.assert_called_with(bridgename=u'brq11112222333',
-                                                port_id=u'bond0', vlan_id=u'2222')
+                                                port_id=u'bond0', vlan_id=u'2222',
+                                                delete_vlan=True)
 
         assert_equals(mock_cumulus_ansible.mock_calls[1],
                       delete_from_bridge_func_call)
@@ -90,5 +89,3 @@ class TestApi(object):
             '/networks/%s/%s/%s' % (network_id, vlan_id, port_id))
         mock_response.assert_called_with('failed',
                                          mimetype='text/plain', status=400)
-        mock_cumulus_ansible.assert_called_with(bridgename=u'brq11112222333',
-                                                port_id=u'bond0', vlan_id=u'2222')

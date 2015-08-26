@@ -51,14 +51,14 @@ def reload_config():
 
 
 class CumulusML2Ansible(object):
-    def __init__(self, bridgename, vlan_id, port_id):
+    def __init__(self, bridgename, vlan_id, port_id, delete_vlan):
         self.port = port_id
         self.bridgename = bridgename
         self.vlan = vlan_id
         self.vlan_aware_bridge = get_vlan_aware_bridge()
         self.port_vids = None
         self.bridge_vids = None
-        self.delete_vlan = False
+        self.delete_vlan = delete_vlan
 
     def update_port_vlan_list(self):
         """ removes or adds vlans to the vlan aware bridge member vlans
@@ -116,11 +116,11 @@ class CumulusML2Ansible(object):
     def delete_from_bridge_vlan_aware(self):
         """ delete vlan from vlan aware bridge
         """
-        errmsg = self.update_vlan_aware_port_config(delete=True)
+        errmsg = self.update_vlan_aware_port_config()
         if errmsg:
             return errmsg
 
-        errmsg = self.update_vlan_aware_bridge_config(delete=True)
+        errmsg = self.update_vlan_aware_bridge_config()
         if errmsg:
             return errmsg
 
