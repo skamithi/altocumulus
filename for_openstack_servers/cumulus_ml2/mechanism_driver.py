@@ -152,7 +152,7 @@ class CumulusMechanismDriver(MechanismDriver):
             _request = requests.delete(
                 BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
                                        port=self.protocol_port,
-                                       switch_name_or_ip=_switch.k,
+                                       switch_name_or_ip=_switch.get('name'),
                                        vlanid=unicode(_vlanid),
                                        network=network_id,
                                        port_id=_switchport)
