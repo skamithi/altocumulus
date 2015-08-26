@@ -65,3 +65,10 @@ class TestCumulusML2Ansible(object):
                       'something failed')
         assert_equals(mock_bridge_config.call_count, 1)
         assert_equals(mock_port_config.call_count, 1)
+
+    @mock.patch('cumulus_ml2.cumulus_ansible.update_config_via_ansible')
+    def test_update_vlan_aware_port_config(self, mock_config_via_ansible):
+        self.myobject.port = 'bond0'
+        self.myobject.port_vids = ['1-10']
+        self.myobject.update_vlan_aware_port_config()
+        mock_config_via_ansible.assert_called_with('cl_interface', 'name=bond0 vids=1-10')
