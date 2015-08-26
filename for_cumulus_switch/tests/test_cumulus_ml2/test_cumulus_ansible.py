@@ -24,7 +24,7 @@ class TestCumulusML2Ansible(object):
         assert_equals(self.myobject.add_to_bridge(), 'exec bridge vlan classic mode')
 
     @mock.patch('cumulus_ml2.cumulus_ansible.netshowlib.iface')
-    def test_update_port_vlan_list(self, mock_iface):
+    def test_update_port_vlan_list_add_vlan(self, mock_iface):
         instance = mock_iface.return_value
         instance.vlan_list = ['1', '2', '3']
         self.myobject.vlan = '4'
@@ -32,7 +32,16 @@ class TestCumulusML2Ansible(object):
         assert_equals(self.myobject.port_vids, ['1-4'])
 
     @mock.patch('cumulus_ml2.cumulus_ansible.netshowlib.iface')
-    def test_update_bridge_vlan_list(self, mock_iface):
+    def test_update_port_vlan_list_delete_vlan(self, mock_iface):
+        instance = mock_iface.return_value
+        instance.vlan_list = ['1', '2', '3']
+        self.myobject.delete_vlan = True
+        self.myobject.vlan = '3'
+        self.myobject.update_port_vlan_list()
+        assert_equals(self.myobject.port_vids, ['1-2'])
+
+    @mock.patch('cumulus_ml2.cumulus_ansible.netshowlib.iface')
+    def test_update_bridge_vlan_list_add_vlan(self, mock_iface):
         main_bridge = mock_iface.return_value
         member1 = mock.MagicMock()
         member1.vlan_list = ['1', '2']
@@ -40,8 +49,24 @@ class TestCumulusML2Ansible(object):
         member2.vlan_list = ['3', '4']
         main_bridge.members = {'member1': member1, 'member2': member2}
         self.myobject.vlan_aware_bridge = main_bridge
+        self.myobject.vlan = '5'
         self.myobject.update_bridge_vlan_list()
-        assert_equals(self.myobject.bridge_vids, ['1-4'])
+        assert_equals(self.myobject.bridge_vids, ['1-5'])
+
+    @mock.patch('cumulus_ml2.cumulus_ansible.netshowlib.iface')
+    def test_update_bridge_vlan_list_delete_vlan(self, mock_iface):
+        main_bridge = mock_iface.return_value
+        member1 = mock.MagicMock()
+        member1.vlan_list = ['1', '2']
+        member2 = mock.MagicMock()
+        member2.vlan_list = ['3', '4']
+        main_bridge.members = {'member1': member1, 'member2': member2}
+        self.myobject.vlan_aware_bridge = main_bridge
+        self.myobject.delete_vlan = True
+        self.myobject.vlan = '2'
+        self.myobject.update_bridge_vlan_list()
+        assert_equals(self.myobject.bridge_vids, ['1', '3-4'])
+
 
     @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_vlan_aware_port_config')
     @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_vlan_aware_bridge_config')
@@ -66,15 +91,20 @@ class TestCumulusML2Ansible(object):
         assert_equals(mock_bridge_config.call_count, 1)
         assert_equals(mock_port_config.call_count, 1)
 
+    @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_port_vlan_list')
     @mock.patch('cumulus_ml2.cumulus_ansible.update_config_via_ansible')
-    def test_update_vlan_aware_port_config(self, mock_config_via_ansible):
+    def test_update_vlan_aware_port_config(self, mock_config_via_ansible,
+                                           mock_update_port_vlan_list):
         self.myobject.port = 'bond0'
         self.myobject.port_vids = ['1-10']
         self.myobject.update_vlan_aware_port_config()
         mock_config_via_ansible.assert_called_with('cl_interface', 'name=bond0 vids=1-10')
 
+
+    @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_bridge_vlan_list')
     @mock.patch('cumulus_ml2.cumulus_ansible.update_config_via_ansible')
-    def test_update_vlan_aware_bridge_config(self, mock_config_via_ansible):
+    def test_update_vlan_aware_bridge_config(self, mock_config_via_ansible,
+                                             mock_update_bridge_vlan_list):
         self.myobject.vlan_aware_bridge = mock.MagicMock()
         self.myobject.vlan_aware_bridge.name = 'bridge'
         self.myobject.bridge_vids = ['1-20']

@@ -58,21 +58,30 @@ class CumulusML2Ansible(object):
         self.vlan_aware_bridge = get_vlan_aware_bridge()
         self.port_vids = None
         self.bridge_vids = None
+        self.delete_vlan = False
 
     def update_port_vlan_list(self):
-        """ removes or adds vlans to the bridge vlan list.
+        """ removes or adds vlans to the vlan aware bridge member vlans
         """
         port_vlan_list = netshowlib.iface(self.port).vlan_list
-        port_vlan_list.append(self.vlan)
+        if self.delete_vlan:
+            port_vlan_list.remove(self.vlan)
+        else:
+            port_vlan_list.append(self.vlan)
         self.port_vids = create_range('', set(port_vlan_list))
 
     def update_bridge_vlan_list(self):
-        """ get a list of all vlans found on the vlan aware bridge
+        """ removes or adds vlans to the vlan aware bridge list
         """
         vlan_list = []
         bridgemems = self.vlan_aware_bridge.members.values()
         for _member in bridgemems:
             vlan_list += (_member.vlan_list)
+
+        if self.delete_vlan:
+            vlan_list.remove(self.vlan)
+        else:
+            vlan_list.append(self.vlan)
 
         self.bridge_vids = create_range('', set(vlan_list))
 
@@ -80,11 +89,13 @@ class CumulusML2Ansible(object):
         pass
 
     def update_vlan_aware_port_config(self):
+        self.update_port_vlan_list()
         modname = 'cl_interface'
         modargs_str = 'name=%s vids=%s' % (self.port, ','.join(self.port_vids))
         return update_config_via_ansible(modname, modargs_str)
 
     def update_vlan_aware_bridge_config(self):
+        self.update_bridge_vlan_list()
         modname = 'cl_bridge'
         modargs_str = 'name=%s vids=%s' % (
             self.vlan_aware_bridge.name, ','.join(self.bridge_vids))
@@ -102,6 +113,17 @@ class CumulusML2Ansible(object):
         if errmsg:
             return errmsg
 
+    def delete_from_bridge_vlan_aware(self):
+        """ delete vlan from vlan aware bridge
+        """
+        errmsg = self.update_vlan_aware_port_config(delete=True)
+        if errmsg:
+            return errmsg
+
+        errmsg = self.update_vlan_aware_bridge_config(delete=True)
+        if errmsg:
+            return errmsg
+
     def add_to_bridge_classic_mode(self):
         """ add or create bridge with port in classic mode.
         """
@@ -112,3 +134,9 @@ class CumulusML2Ansible(object):
             return self.add_to_bridge_vlan_aware()
         else:
             return self.add_to_bridge_classic_mode()
+
+    def delete_from_bridge(self):
+        if self.in_vlan_aware_mode():
+            return self.delete_from_bridge_vlan_aware()
+        else:
+            return self.delete_from_bridge_class_mode()
