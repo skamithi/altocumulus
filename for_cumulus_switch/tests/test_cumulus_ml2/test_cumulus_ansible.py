@@ -3,6 +3,44 @@ from cumulus_ml2 import cumulus_ansible
 import mock
 
 
+class TestPkgResource(object):
+    def __init__(self):
+        self.location = 'blah'
+
+
+@mock.patch('cumulus_ml2.cumulus_ansible.ansible_inventory.Inventory')
+@mock.patch('cumulus_ml2.cumulus_ansible.ansible_runner.Runner')
+@mock.patch('cumulus_ml2.cumulus_ansible.pkg_resources.require')
+def test_update_via_ansible(mock_install_location,
+                            mock_runner, mock_inventory):
+    my_object = TestPkgResource()
+    mock_install_location.return_value = [my_object]
+    mock_inventory.return_value = 'inventory'
+    cumulus_ansible.update_config_via_ansible('br0', "eth1, eth3-4")
+    mock_inventory.assert_called_with(['localhost'])
+    mock_runner.assert_called_with(
+        become=True,
+        inventory='inventory',
+        module_args="eth1, eth3-4",
+        module_name='br0',
+        module_path='blah/../../../ansible_modules/library',
+        transport='local')
+
+
+@mock.patch('cumulus_ml2.cumulus_ansible.ansible_inventory.Inventory')
+@mock.patch('cumulus_ml2.cumulus_ansible.ansible_runner.Runner')
+def test_reload(mock_runner, mock_inventory):
+    mock_inventory.return_value = 'inventory'
+    cumulus_ansible.reload_config()
+    mock_inventory.assert_called_with(['localhost'])
+    mock_runner.assert_called_with(
+        become=True,
+        inventory='inventory',
+        module_args='/sbin/ifreload -a',
+        module_name='shell', transport='local'
+    )
+
+
 class TestCumulusML2Ansible(object):
 
     @mock.patch('cumulus_ml2.cumulus_ansible.get_vlan_aware_bridge')
@@ -81,7 +119,6 @@ class TestCumulusML2Ansible(object):
         self.myobject.update_bridge_vlan_list()
         assert_equals(self.myobject.bridge_vids, ['1', '3-4'])
 
-
     @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_vlan_aware_port_config')
     @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_vlan_aware_bridge_config')
     def test_add_to_bridge_vlan_aware_port_config_as_error(self,
@@ -112,8 +149,8 @@ class TestCumulusML2Ansible(object):
         self.myobject.port = 'bond0'
         self.myobject.port_vids = ['1-10']
         self.myobject.update_vlan_aware_port_config()
+        # this test doesn't catch the fact that the call as 3 arguments not 2.
         mock_config_via_ansible.assert_called_with('cl_interface', 'name=bond0 vids=1-10')
-
 
     @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_bridge_vlan_list')
     @mock.patch('cumulus_ml2.cumulus_ansible.update_config_via_ansible')

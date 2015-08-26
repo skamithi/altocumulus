@@ -2,7 +2,8 @@ from netshowlib import netshowlib
 from netshowlib.linux.common import create_range
 import pkg_resources
 import os
-import ansible
+import ansible.runner as ansible_runner
+import ansible.inventory as ansible_inventory
 
 
 def get_vlan_aware_bridge():
@@ -20,12 +21,22 @@ def get_vlan_aware_bridge():
     return None
 
 
-def update_config_via_ansible(self, modname, modargs_str):
+def update_config_via_ansible(modname, modargs_str):
+    """ update config via cumulus ansible modules using ansible command line options
+    not ansible-playbook options. If a change occurs, it will call the reload_config()
+    function
+    Args:
+        modname(str): name of the ansible module to clal
+        modargs_str(str): module arguments
+    Returns:
+        an error message is something goes wrong.
+    """
     install_location = pkg_resources.require('cumulus-ml2-service')[0].location
-    _library = os.path.join(install_location, '..', '..', '..',
-                            -                            'ansible_modules', 'library')
-    inv = ansible.inventory.Inventory(['localhost'])
-    results = ansible.runner.Runner(
+    _library = os.path.join(install_location,
+                            '..', '..', '..',
+                            'ansible_modules', 'library')
+    inv = ansible_inventory.Inventory(['localhost'])
+    results = ansible_runner.Runner(
         module_name=modname,
         module_path=_library,
         become=True,
@@ -42,9 +53,11 @@ def update_config_via_ansible(self, modname, modargs_str):
 
 def reload_config():
     """ run ifreload -a to push the changes into the persistent config
+    Returns:
+        an error message if something goes wrong
     """
-    inv = ansible.inventory.Inventory(['localhost'])
-    results = ansible.runner.Runner(
+    inv = ansible_inventory.Inventory(['localhost'])
+    results = ansible_runner.Runner(
         module_name='shell',
         become=True,
         transport='local',
