@@ -88,7 +88,7 @@ class CumulusMechanismDriver(MechanismDriver):
                 _ports = _ports.split(';')
             else:
                 _ports = ['none']
-                _hostname = _switcharr[0]
+            _hostname = _switcharr[0]
             final_switch_list.append({'name': _hostname,
                                       "ports": _ports})
         return final_switch_list
