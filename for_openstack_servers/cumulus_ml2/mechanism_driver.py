@@ -153,7 +153,7 @@ class CumulusMechanismDriver(MechanismDriver):
                 BRIDGE_PORT_URL.format(url_prefix=self.url_prefix,
                                        port=self.protocol_port,
                                        switch_name_or_ip=_switch.get('name'),
-                                       vlanid=unicode(_vlanid),
+                                       vlan=unicode(_vlanid),
                                        network_id=_network,
                                        port_id=_switchport)
             )
