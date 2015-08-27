@@ -11,8 +11,8 @@ class TestPkgResource(object):
 @mock.patch('cumulus_ml2.cumulus_ansible.ansible_inventory.Inventory')
 @mock.patch('cumulus_ml2.cumulus_ansible.ansible_runner.Runner')
 @mock.patch('cumulus_ml2.cumulus_ansible.pkg_resources.require')
-def test_update_via_ansible(mock_install_location,
-                            mock_runner, mock_inventory):
+def test_update_via_ansible_arguments_passed(mock_install_location,
+                                             mock_runner, mock_inventory):
     my_object = TestPkgResource()
     mock_install_location.return_value = [my_object]
     mock_inventory.return_value = 'inventory'
@@ -25,6 +25,53 @@ def test_update_via_ansible(mock_install_location,
         module_name='br0',
         module_path='blah/../../../ansible_modules/library',
         transport='local')
+
+@mock.patch('cumulus_ml2.cumulus_ansible.ansible_inventory.Inventory')
+@mock.patch('cumulus_ml2.cumulus_ansible.ansible_runner.Runner')
+@mock.patch('cumulus_ml2.cumulus_ansible.pkg_resources.require')
+def test_update_via_ansible_results_failed(mock_install_location,
+                                           mock_runner, mock_inventory):
+    my_object = TestPkgResource()
+    mock_install_location.return_value = [my_object]
+    mock_inventory.return_value = 'inventory'
+    instance = mock_runner.return_value
+    instance.run = mock.MagicMock(return_value={
+        'dark': {},
+        'contacted':
+        {'localhost':
+         {u'msg': u'missing required arguments: ports',
+          u'failed': True,
+          'invocation': {'module_name':
+                         'cl_bridge',
+                         'module_args': u'name=bridge vids=1,20,48,55,74'}}}})
+
+    errormsg = cumulus_ansible.update_config_via_ansible('br0', "eth1, eth3-4")
+    assert_equals(errormsg, u'missing required arguments: ports')
+
+
+@mock.patch('cumulus_ml2.cumulus_ansible.reload_config')
+@mock.patch('cumulus_ml2.cumulus_ansible.ansible_inventory.Inventory')
+@mock.patch('cumulus_ml2.cumulus_ansible.ansible_runner.Runner')
+@mock.patch('cumulus_ml2.cumulus_ansible.pkg_resources.require')
+def test_update_via_ansible_changed_true(mock_install_location,
+                                         mock_runner, mock_inventory,
+                                         mock_reload_config):
+    my_object = TestPkgResource()
+    mock_install_location.return_value = [my_object]
+    mock_inventory.return_value = 'inventory'
+    instance = mock_runner.return_value
+    instance.run = mock.MagicMock(return_value={
+        'dark': {},
+        'contacted':
+        {'localhost':
+         {u'msg': u'missing required arguments: ports',
+          u'changed': True,
+          'invocation': {'module_name':
+                         'cl_bridge',
+                         'module_args': u'name=bridge vids=1,20,48,55,74'}}}})
+
+    cumulus_ansible.update_config_via_ansible('br0', "1,20,48,55,74")
+    assert_equals(mock_reload_config.call_count, 1)
 
 
 @mock.patch('cumulus_ml2.cumulus_ansible.ansible_inventory.Inventory')

@@ -45,9 +45,12 @@ def update_config_via_ansible(modname, modargs_str):
     _error = results.get('dark')
     if _error:
         return _error['localhost']['msg']
-    itworked = results.get('contacted')
+    itmayhaveworked = results.get('contacted')
+    if itmayhaveworked.get('localhost') and \
+            itmayhaveworked.get('localhost').get('failed'):
+        return itmayhaveworked['localhost']['msg']
     # if the change actually occurred reload the config
-    if itworked['localhost'].get('changed'):
+    if itmayhaveworked['localhost'].get('changed'):
         return reload_config()
 
 
