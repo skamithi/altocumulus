@@ -207,7 +207,7 @@ class TestCumulusML2Ansible(object):
         self.myobject.port_vids = ['1-10']
         self.myobject.update_vlan_aware_port_config()
         # this test doesn't catch the fact that the call as 3 arguments not 2.
-        mock_config_via_ansible.assert_called_with('cl_interface', 'name=bond0 vids=1-10')
+        mock_config_via_ansible.assert_called_with('cl_interface', 'name=bond0 vids=1-10 mstpctl_bpduguard=yes')
 
     @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_bridge_vlan_list')
     @mock.patch('cumulus_ml2.cumulus_ansible.update_config_via_ansible')

@@ -140,7 +140,7 @@ class CumulusML2Ansible(object):
         """
         self.update_port_vlan_list()
         modname = 'cl_interface'
-        modargs_str = 'name=%s vids=%s' % (self.port, ','.join(self.port_vids))
+        modargs_str = 'name=%s vids=%s mstpctl_bpduguard=yes' % (self.port, ','.join(self.port_vids))
         return update_config_via_ansible(modname, modargs_str)
 
     def update_vlan_aware_bridge_config(self):
