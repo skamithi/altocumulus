@@ -1,5 +1,5 @@
 from netshowlib import netshowlib
-from netshowlib.linux.common import create_range
+from netshowlib.linux.common import create_range, group_ports
 import pkg_resources
 import os
 import ansible.runner as ansible_runner
@@ -11,14 +11,6 @@ def get_vlan_aware_bridge():
     Returns:
         True if vlan aware bridge is present
     """
-    portlist = netshowlib.portname_list()
-    for _portname in portlist:
-        _iface = netshowlib.iface(_portname)
-        if hasattr(_iface, 'vlan_filtering') and \
-                _iface.vlan_filtering and \
-                _iface.is_bridge():
-                    return _iface
-    return None
 
 
 def update_config_via_ansible(modname, modargs_str):
@@ -75,10 +67,35 @@ class CumulusML2Ansible(object):
         self.port = port_id
         self.bridgename = bridgename
         self.vlan = vlan_id
-        self.vlan_aware_bridge = get_vlan_aware_bridge()
+        self._vlan_aware_bridge = None
+        self._bridge_ports = None
         self.port_vids = None
         self.bridge_vids = None
         self.delete_vlan = delete_vlan
+
+    @property
+    def vlan_aware_bridge(self):
+        if self._vlan_aware_bridge:
+            return self._vlan_aware_bridge
+
+        portlist = netshowlib.portname_list()
+        for _portname in portlist:
+            _iface = netshowlib.iface(_portname)
+            if hasattr(_iface, 'vlan_filtering') and \
+                    _iface.vlan_filtering and \
+                    _iface.is_bridge():
+                self._vlan_aware_bridge = _iface
+
+        return self._vlan_aware_bridge
+
+    @property
+    def bridge_ports(self):
+        if self._bridge_ports:
+            return self._bridge_ports
+        if not self.vlan_aware_bridge:
+            return None
+        self._bridge_ports = sorted(self.vlan_aware_bridge.members.keys())
+        return self._bridge_ports
 
     def update_port_vlan_list(self):
         """ removes or adds vlans to the vlan aware bridge member vlans
@@ -133,8 +150,10 @@ class CumulusML2Ansible(object):
         """
         self.update_bridge_vlan_list()
         modname = 'cl_bridge'
-        modargs_str = 'name=%s vids=%s' % (
-            self.vlan_aware_bridge.name, ','.join(self.bridge_vids))
+        modargs_str = 'name=%s ports=%s vids=%s' % (
+            self.vlan_aware_bridge.name,
+            ','.join(group_ports(self.bridge_ports)),
+            ','.join(self.bridge_vids))
         return update_config_via_ansible(modname, modargs_str)
 
     def add_to_bridge_vlan_aware(self):
