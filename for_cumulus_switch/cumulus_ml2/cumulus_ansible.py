@@ -102,23 +102,23 @@ class CumulusML2Ansible(object):
         """
         port_vlan_list = netshowlib.iface(self.port).vlan_list
         if self.delete_vlan:
-            port_vlan_list.remove(self.vlan)
+            try:
+                port_vlan_list.remove(self.vlan)
+            except ValueError:
+                pass
         else:
             port_vlan_list.append(self.vlan)
         self.port_vids = create_range('', set(port_vlan_list))
 
     def update_bridge_vlan_list(self):
-        """ removes or adds vlans to the vlan aware bridge list
+        """ adds vlans to the vlan aware bridge list
         """
         vlan_list = []
         bridgemems = self.vlan_aware_bridge.members.values()
         for _member in bridgemems:
             vlan_list += (_member.vlan_list)
 
-        if self.delete_vlan:
-            vlan_list.remove(self.vlan)
-        else:
-            vlan_list.append(self.vlan)
+        vlan_list.append(self.vlan)
 
         self.bridge_vids = create_range('', set(vlan_list))
 
