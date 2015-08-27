@@ -154,7 +154,7 @@ class CumulusMechanismDriver(MechanismDriver):
                                        port=self.protocol_port,
                                        switch_name_or_ip=_switch.get('name'),
                                        vlanid=unicode(_vlanid),
-                                       _network_id=_network,
+                                       network_id=_network,
                                        port_id=_switchport)
             )
             LOG.info(
