@@ -171,15 +171,12 @@ class CumulusML2Ansible(object):
             return errmsg
 
     def delete_from_bridge_vlan_aware(self):
-        """ delete vlan from vlan aware bridge
+        """ delete vlan from vlan aware bridge port. do not delete on interswitch links
+        deleting the vlan from the interswitch link may cause failures.
         Returns:
             error string if failed
         """
         errmsg = self.update_vlan_aware_port_config()
-        if errmsg:
-            return errmsg
-
-        errmsg = self.update_vlan_aware_bridge_config()
         if errmsg:
             return errmsg
 
