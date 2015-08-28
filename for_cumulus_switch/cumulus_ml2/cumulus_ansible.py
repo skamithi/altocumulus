@@ -111,14 +111,13 @@ class CumulusML2Ansible(object):
         self.port_vids = create_range('', set(port_vlan_list))
 
     def update_bridge_vlan_list(self):
-        """ adds vlans to the vlan aware bridge list
+        """ take all the vlans defined on all the members and make sure
+        that is assigned to the bridge interface
         """
         vlan_list = []
         bridgemems = self.vlan_aware_bridge.members.values()
         for _member in bridgemems:
             vlan_list += (_member.vlan_list)
-
-        vlan_list.append(self.vlan)
 
         self.bridge_vids = create_range('', set(vlan_list))
 
@@ -177,6 +176,10 @@ class CumulusML2Ansible(object):
             error string if failed
         """
         errmsg = self.update_vlan_aware_port_config()
+        if errmsg:
+            return errmsg
+
+        errmsg = self.update_vlan_aware_bridge_config()
         if errmsg:
             return errmsg
 

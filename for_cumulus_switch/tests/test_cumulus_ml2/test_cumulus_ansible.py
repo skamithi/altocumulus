@@ -160,7 +160,7 @@ class TestCumulusML2Ansible(object):
 
 
     @mock.patch('cumulus_ml2.cumulus_ansible.netshowlib.iface')
-    def test_update_bridge_vlan_list_add_vlan(self, mock_iface):
+    def test_update_bridge_vlan_list(self, mock_iface):
         main_bridge = mock_iface.return_value
         member1 = mock.MagicMock()
         member1.vlan_list = ['1', '2']
@@ -170,7 +170,7 @@ class TestCumulusML2Ansible(object):
         self.myobject._vlan_aware_bridge = main_bridge
         self.myobject.vlan = '5'
         self.myobject.update_bridge_vlan_list()
-        assert_equals(self.myobject.bridge_vids, ['1-5'])
+        assert_equals(self.myobject.bridge_vids, ['1-4'])
 
 
     @mock.patch('cumulus_ml2.cumulus_ansible.CumulusML2Ansible.update_vlan_aware_port_config')
