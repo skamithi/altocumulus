@@ -1,45 +1,30 @@
-# Altocumulus
+# Proto Cumulus ML2 Plugin
 
-Integrate your Cumulus Linux switch with OpenStack Neutron
+A different implementation of the cumulus ml2 plugin.
 
-Manages VLAN bridges on the switch and L2 connectivity between (compute) hosts and the VLAN bridges. Uses LLDP to perform auto-discovery of hosts and the switchports they are connected to.
+Not supported by Cumulus. Just me trying out some stuff.
 
-Uses the same conventions as the Linux Bridge agent so that DHCP/L3 agents can theoretically be hosted on the switch.
+It currently works in vlan aware mode only.
 
-## Usage
+Comes in 2 parts
 
-There are two components involved in this project:
+Install the "for_cumulus_switch" part on a switch. Its basically flask with some
+ansible code. Then install ansible and netshow-linux-lib dependencies.
+It provisions the vlans persistently into the configuration.
 
-* ML2 mechanism driver (runs on hosts with Neutron server)
-* HTTP API server (runs on switches)
+So configs survive a reboot. Only works with vlan tenant type.
 
-## Installation
+2nd part goes on the network node, or wherever the neutron server is running.
 
-### ML2 mechanism driver
+See the notes embedded in the mechanism_driver.py for what to add to the
+ml2_conf.ini
 
-1. Install the driver and its dependencies with the following
+There is no startup script included yet for the flask api or any security
+features. But thinking of integrating SSL nginx with API key as the
+basic security.
 
-    ```bash
-    pip install git+git://github.com/ianunruh/altocumulus.git
-    pip install requests
-    ```
+This has not been tested in any real switch or server. Just using Cumulus VM and Rackspace
+private cloud in vagrant.
 
-2. Add `cumulus` to the `mechanism_drivers` field in `/etc/neutron/neutron.conf`
-3. Configure `/etc/neutron/plugins/ml2/ml2_cumulus.ini`
+It is part of my study of how ML2 plugins work.
 
-### HTTP API server
-
-1. Install the API server
-
-    ```bash
-    pip install git+git://github.com/ianunruh/altocumulus.git
-    ```
-
-2. Place the included Upstart script in `/etc/init` and run `start altocumulus-api`
-
-## To-do
-
-* Authentication
-* Pluggable discovery strategies
-* Integration with `oslo.rootwrap` for unprivileged operation
-* Working upstart script
