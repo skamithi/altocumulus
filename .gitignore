@@ -1,6 +1,14 @@
 *.pyc
-
+*.tox
+*.swp
+*.swo
 /.vagrant
-/*.egg-info
-/build
+*/*.egg-info
+*/pbr*
+*/dist
+*/AUTHORS
+*/ChangeLog
 /dist
+*/Session.vim
+Session.vim
+*/build
